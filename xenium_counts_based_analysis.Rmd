@@ -198,6 +198,28 @@ library(fasthplus)
 glm.pca <- reducedDim(sfe, "GLM-PCA")
 dim(glm.pca)
 # [1] 151975     50
-hplus <- hpb(D=glm.pca, L=colData(sfe)$louvain25, t=1, r=30)
+
+# D: obs x features matrix, L: labels, t: pre-bootstrap sample size, r: number of bootstrap interations (default 30)
+hplus <- hpb(D=glm.pca, L=colData(sfe)$louvain25, t=151, r=30)
+hplus # [1] 0.2321421
+
+norm.pca <- reducedDim(sfe, "PCA")
+norm.hplus <- hpb(D=norm.pca, L=sfe$norm.louvain25, t=151, r=30)
+norm.hplus # [1] 0.1191054
+```
+
+```{r}
+# try finding marker genes
+glm.markers <- scran::findMarkers(counts(sfe), test.type="binom",
+                                  groups=sfe$louvain25) # this seems to be numerically unstable...
+pca.markers <- scran::findMarkers(logcounts(sfe), test.type="binom",
+                                  groups=sfe$norm.louvain25) # this is also numerically unstable
+
+```
+
+```{r}
+
+# let's try DESeq2 for one cluster first
+
 ```
 
