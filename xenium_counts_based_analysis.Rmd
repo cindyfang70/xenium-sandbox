@@ -218,8 +218,27 @@ pca.markers <- scran::findMarkers(logcounts(sfe), test.type="binom",
 ```
 
 ```{r}
-
+library(DESeq2)
 # let's try DESeq2 for one cluster first
+sfe$isLou1 <- sfe$louvain25 == "Lou1"
+summed <- aggregateAcrossCells(sfe, ids=sfe$louvain25)
+summed$sizeFactor <- NULL
+
+cts <- counts(summed)
+coldata <- colData(summed)
+
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = coldata,
+                              design = ~ isLou1)
+
+dds <- DESeq(dds)
+res <- results(dds)
+
+# find upregulated genes
+res.up <- res %>%
+    as.data.frame() %>%
+    filter(log2FoldChange > 0) %>%
+    arrange(desc(log2FoldChange))
 
 ```
 
