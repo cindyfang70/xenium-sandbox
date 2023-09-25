@@ -60,7 +60,8 @@ readXenium <- function(dir_name){
     ind_invalid <- !st_is_valid(nuc_sf)
     nuc_sf[ind_invalid,] <- nngeo::st_remove_holes(st_buffer(nuc_sf[ind_invalid,], 0))
     
-    colData(sce) <- cbind(colData(sce), cell_info[,-1])
+    colData(sce) <- cbind(colData(sce), cell_info)
+    print(cell_info)
     spe <- toSpatialExperiment(sce, spatialCoordsNames = c("x_centroid", "y_centroid"))
     sfe <- toSpatialFeatureExperiment(spe)
     
@@ -87,19 +88,19 @@ readXenium <- function(dir_name){
     colData(sfe)$nCounts_normed <- sfe$nCounts/n_panel
     colData(sfe)$nGenes_normed <- sfe$nGenes/n_panel
     colData(sfe)$prop_nuc <- sfe$nucleus_area / sfe$cell_area
-    
+
     sfe <- addPerCellQCMetrics(sfe, subsets = list(blank = is_blank,
-                                                   negProbe = is_neg,
-                                                   negCodeword = is_neg2,
-                                                   anti = is_anti,
-                                                   depr = is_depr,
-                                                   any_neg = is_any_neg))
-    
-    
+    negProbe = is_neg,
+    negCodeword = is_neg2,
+    anti = is_anti,
+    depr = is_depr,
+    any_neg = is_any_neg))
+
+
     rowData(sfe)$means <- rowMeans(counts(sfe))
     rowData(sfe)$vars <- rowVars(counts(sfe))
     rowData(sfe)$cv2 <- rowData(sfe)$vars/rowData(sfe)$means^2
-    
+
     
     # Add cell ids and make gene names unique
     colnames(sfe) <- seq_len(ncol(sfe))
@@ -149,4 +150,21 @@ plotMeanVar <- function(mean_emp, var_emp, plotTitle){
         theme_bw()
     
     return(p)
+}
+
+getRegionInds <- function(region, sfe){
+    # Read in the cell ids of a particular region
+    region_ids_fname <- paste0(region, "_cell_ids.csv")
+    region_ids <- readr::read_csv2(here("data", data_dir, region_ids_fname))
+    
+    # Extract just the cell ids
+    region_ids <- region_ids %>%
+        tidyr::separate(everything(), sep="\\,", into=c("cell_id", NA, NA, NA))
+    region_ids <- region_ids[-c(1,2),]
+    
+    # Get the sfe indices for the cells in the region
+    region_inds <- which(sfe$cell_id %in% region_ids$cell_id)
+    
+    return(region_inds)
+    
 }
