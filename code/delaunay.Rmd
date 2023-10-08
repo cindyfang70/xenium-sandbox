@@ -1,0 +1,125 @@
+---
+title: "Spatial Domain Detection"
+author: "Cindy Fang"
+date: "2023-10-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages({
+    library(Voyager)
+    library(SFEData)
+    library(patchwork)
+    library(SpatialFeatureExperiment)
+    library(SingleCellExperiment)
+    library(SpatialExperiment)
+    library(ggplot2)
+    library(bluster)
+    library(stringr)
+    library(scuttle)
+    library(BiocSingular)
+    library(scater)
+    library(rjson)
+    library(Matrix)
+    library(DropletUtils)
+    library(vroom)
+    library(sf)
+    library(BiocParallel)
+    library(dplyr)
+    library(here)
+    library(schex)
+    library(ggforce)
+})
+source(here("code", "xenium_helpers.R"))
+```
+
+```{r}
+data_dir <- "output-XETG00089__0005434__Region_1__20230831__172339"
+
+# Read in the three regions
+br6471_p <- readRDS(here("data", data_dir, "Br6471_Post_SFE.RDS"))
+
+cols_use <- names(colData(br6471_p))[str_detect(
+    names(colData(br6471_p)), "_percent$")]
+cols_use <- cols_use[!grepl("anti", cols_use)]
+
+for (n in cols_use) {
+    br6471_p <- get_neg_ctrl_outliers(n, br6471_p)
+}
+inds_keep <- br6471_p$nucleus_area <=200 & !br6471_p$is_blank_outlier &
+    !br6471_p$is_depr_outlier &!br6471_p$is_negProbe_outlier &
+    !br6471_p$is_negCodeword_outlier & br6471_p$nCounts > 0
+
+br6471_p <- br6471_p[,inds_keep]
+```
+
+
+```{r}
+br6471_p <- scry::nullResiduals(br6471_p, assay="counts", fam="poisson", type="pearson")
+br6471_p <- scater::runPCA(br6471_p, ncomponents=50, 
+                      ntop = 1000,
+                      exprs_values = "poisson_pearson_residuals",
+                      scale = TRUE, name = "GLM-PCA",
+                      BSPARAM = BiocSingular::RandomParam())
+
+plotReducedDim(br6471_p, ncomponents=4, colour_by="total_counts", dimred="GLM-PCA")
+Voyager::ElbowPlot(br6471_p, reduction="GLM-PCA", ndims=50)
+```
+```{r}
+g25 <- scran::buildSNNGraph(br6471_p, k=25, use.dimred = "GLM-PCA")
+lou25 <- igraph::cluster_louvain(g25)
+br6471_p$louvain25 <- paste0("Lou", lou25$membership)
+
+
+br6471_p$isLou4 <- br6471_p$louvain25=="Lou4"
+clusts.p <- plotSpatialFeature(br6471_p, "louvain25", colGeometryName = "cellSeg")
+clusts.p
+
+br6471_p$isLou15 <- br6471_p$louvain25=="Lou15"
+plotSpatialFeature(br6471_p, "isLou15", colGeometryName = "cellSeg") 
+```
+
+```{r}
+# Try building a Delaunay triangulation for one cell type
+library(interp)
+celltype.coords <- spatialCoords(br6471_p)[br6471_p$isLou15,]
+
+tri <- interp::tri.mesh(x=celltype.coords[,1],
+                        y=celltype.coords[,2])
+
+tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
+plotGeometry(br6471_p, type="cellSeg")+
+    ggforce::geom_delaunay_segment(data=tri.df, aes(x=x, y=y))
+```
+
+
+```{r}
+plotDelaunay <- function(sfe, cluster){
+    celltype.coords <- spatialCoords(sfe)[colData(sfe)[[cluster]],]
+    
+    tri <- interp::tri.mesh(x=celltype.coords[,1],
+                        y=celltype.coords[,2])
+    print(summary(tri))
+
+    tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
+    p <- plotGeometry(sfe, type="cellSeg")+
+        ggforce::geom_delaunay_segment(data=tri.df, aes(x=x, y=y), colour="blue")
+    return(p)
+}
+pdf("delaunayPlots-k25.pdf")
+tri.ps <- c()
+for(clust in unique(br6471_p$louvain25)){
+    print(clust)
+    colData(br6471_p)[clust] <- br6471_p$louvain25==clust
+    #print( colData(br6471_p)[clust])
+    p <- plotDelaunay(br6471_p, clust)
+    print(p)
+}
+dev.off()
+# library(gridExtra)
+# 
+# do.call("grid.arrange", c(tri.ps, ncol=3))
+
+```
+
