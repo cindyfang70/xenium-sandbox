@@ -152,7 +152,7 @@ plotMeanVar <- function(mean_emp, var_emp, plotTitle){
     return(p)
 }
 
-getRegionInds <- function(region, sfe){
+getRegionInds <- function(region, data_dir, sfe){
     # Read in the cell ids of a particular region
     region_ids_fname <- paste0(region, "_cell_ids.csv")
     region_ids <- readr::read_csv2(here("data", data_dir, region_ids_fname))
@@ -167,4 +167,31 @@ getRegionInds <- function(region, sfe){
     
     return(region_inds)
     
+}
+
+SFEtoSPE <- function(sfe){
+    # First convert to an SCE
+    sce <- SingleCellExperiment(assays=list(counts=counts(sfe)))
+    colData(sce) <- colData(sfe)
+    
+    # Get the x and y centroids for this region, and add them to the coldata
+    sce$x_centroid <- spatialCoords(sfe)[,1]
+    sce$y_centroid <- spatialCoords(sfe)[,2]
+    
+    # Convert to SPE
+    spe <- toSpatialExperiment(sce, spatialCoordsNames=c("x_centroid", "y_centroid"))
+    
+    return(spe)
+}
+
+get_neg_ctrl_outliers <- function(col, spe) {
+    inds <- colData(spe)$nCounts > 0 & colData(spe)[[col]] > 0
+    df <- colData(spe)[inds,]
+    outlier_inds <- isOutlier(df[[col]], type = "higher")
+    outliers <- rownames(df)[outlier_inds]
+    col2 <- str_remove(col, "^subsets_")
+    col2 <- str_remove(col2, "_percent$")
+    new_colname <- paste("is", col2, "outlier", sep = "_")
+    colData(spe)[[new_colname]] <- colnames(spe) %in% outliers
+    return(spe)
 }
