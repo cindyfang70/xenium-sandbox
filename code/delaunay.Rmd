@@ -194,9 +194,22 @@ for(clust in unique(br6471_p$louvain25)){
     
     # do the triangulation and plot it on the tissue
     del <- plotDelaunay(br6471_p, clust)
-    p <-del$p
+    #p <-del$p
     tri <- del$tri
     tris <- rlist::list.append(tris, tri)
+    
+    tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
+
+    from.x <- tri$x[tri$arcs[,1]]
+    from.y <- tri$y[tri$arcs[,1]]
+
+    to.x <- tri$x[tri$arcs[,2]]
+    to.y <- tri$y[tri$arcs[,2]]
+
+    seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
+
+    p <- plotGeometry(br6471_p, type="cellSeg")+
+        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))
     
     # get the adjacency matrix
     adj <- delaunayAdjacencyMatrix(br6471_p, tri)
@@ -205,10 +218,12 @@ for(clust in unique(br6471_p$louvain25)){
     gdist <- getEdgesSpatialDistance(br6471_p, adj)
     
     # plot the histogram of the edge lengths
-    weight.df <- data.frame(weight=E(gdist)$weight)
+    weight.df <- data.frame(weight=E(gdist)$weight) %>%
+        filter(weight < 1000)
     
     h <- ggplot(weight.df, aes(x=weight))+
-        geom_histogram(bins=50)+
+        #geom_histogram(bins=50)+
+        geom_density()+
         xlab("Edge lengths")
     print(p + h)
     
@@ -216,19 +231,17 @@ for(clust in unique(br6471_p$louvain25)){
 dev.off()
 ```
 ```{r}
-compute_global_edge_constraint <- function(g, vertex){
+computeGlobalEdgeConstraint <- function(g, vertex){
     # compute the global edge constraint for a single vertex detailed in https://www.sciencedirect.com/science/article/pii/S0098300411004419#s0010
+    
     # compute the global edge length mean and variation
     global_mean <- mean(E(g)$weight)
     global_variation <- sd(E(g)$weight)
     
     # get the vertex's edge length to its neighbours
     incident.els <- incident(g, vertex)$weight
-    #print(incident.els)
-    #print(nn)
     
     local_mean <- mean(incident.els)
-    #print(local_mean)
     
     alpha <- global_mean/local_mean
     
@@ -237,7 +250,29 @@ compute_global_edge_constraint <- function(g, vertex){
     return(global_constraint)
 }
 
-gc <- compute_global_edge_constraint(g=gdist, vertex="ccohoonn-1")
+gc <- computeGlobalEdgeConstraint(g=gdist, vertex="ccohoonn-1")
 gc
+```
+```{r}
+identifyGlobalLongEdges <- function(g, global_constraint){
+    isLong <- E(g)$weight > global_constraint
+    E(g)$isLong <- isLong
+    return(g)
+}
+
+gdistLong <- identifyGlobalLongEdges(gdist, gc)
+tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
+
+from.x <- tri$x[tri$arcs[,1]]
+from.y <- tri$y[tri$arcs[,1]]
+
+to.x <- tri$x[tri$arcs[,2]]
+to.y <- tri$y[tri$arcs[,2]]
+
+seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
+
+plotGeometry(br6471_p, type="cellSeg")+
+    geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))
+   # 
 ```
 
