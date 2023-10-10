@@ -96,21 +96,6 @@ plotDelaunay <- function(sfe, cluster){
         ggforce::geom_delaunay_segment(data=tri.df, aes(x=x, y=y), colour="blue")
     return(list(p=p, tri=tri))
 }
-pdf("delaunayPlots-k25.pdf")
-tri.ps <- c()
-tris <- list()
-for(clust in unique(br6471_p$louvain25)){
-    print(clust)
-    colData(br6471_p)[clust] <- br6471_p$louvain25==clust
-    del <- plotDelaunay(br6471_p, clust)
-    p <-del$p
-    print(p)
-    tris <- rlist::list.append(tris, del$tri)
-}
-dev.off()
-# library(gridExtra)
-# 
-# do.call("grid.arrange", c(tri.ps, ncol=3))
 
 ```
 
@@ -136,24 +121,104 @@ delaunayAdjacencyMatrix <- function(sfe, tri){
     return(adj)
 }
 
-# adj1 <- delaunayAdjacencyMatrix(br6471_p, tris[[1]])
-# adj2 <-  delaunayAdjacencyMatrix(br6471_p, tris[[2]])
+# adjs <- c()
+# for (i in 1:length(tris)){
+#     adj <- delaunayAdjacencyMatrix(sfe=br6471_p, tri=tris[[i]])
+#     adjs <- list.append(adjs, adj)
+# }
 # 
-# g1 <- graph_from_adjacency_matrix(adj1)
-# g2 <- graph_from_adjacency_matrix(adj2)
-# 
-# joint <- union(g1, g2)
+# gs <- sapply(adjs, graph_from_adjacency_matrix)
+# joint <- do.call("union", gs)
 # 
 # joint.adj <- get.adjacency(joint)
-adjs <- c()
-for (i in 1:length(tris)){
-    adj <- delaunayAdjacencyMatrix(sfe=br6471_p, tri=tris[[i]])
-    adjs <- list.append(adjs, adj)
+```
+
+
+```{r}
+getEdgesSpatialDistance <- function(sfe, adj){
+    # build the graph
+    g <- graph_from_adjacency_matrix(adj)
+
+    # provide the x and y cell centroids for each cell 
+    inds <- which(sfe$cell_id %in% V(g)$name)
+    V(g)$x_coords <- spatialCoords(sfe)[,1][inds]
+    V(g)$y_coords <- spatialCoords(sfe)[,2][inds]
+    
+    # get the edgelist to easily compute distances 
+    el <- get.edgelist(g)
+    
+    
+    # make a coordinates dataframe that's easier to query
+    coords_df <- as.data.frame(cbind(name=V(g)$name, 
+                       x=V(g)$x_coords, 
+                       y=V(g)$y_coords))
+    
+    # Find the coordinates of the first vertex for each edge
+    start_coords <- coords_df %>%
+        filter(name %in% el[,1])
+    # Match the order of the coordinates to the order that they appear in the edgelist 
+    start_coords <- start_coords[match(el[,1], start_coords$name),]
+    
+    # Do the same for the second vertex of each edge
+    end_coords <- coords_df %>%
+        filter(name %in% el[,2])
+    
+    end_coords <- end_coords[match(el[,2], end_coords$name),]
+    
+    # Compute the length (euclidean distance) for each edge
+    
+    dists <- sqrt((as.numeric(start_coords$x) -     as.numeric(end_coords$x))^2 + 
+                      (as.numeric(start_coords$y) - as.numeric(end_coords$y))^2)
+    #print(dists)
+    
+    # save the lengths as the edge weights
+    E(g)$weight <- dists
+    
+    return(g)
+    
 }
 
-gs <- sapply(adjs, graph_from_adjacency_matrix)
-joint <- do.call("union", gs)
+prune_global_long_edges <- function(sfe, adj){
+    
+}
 
-joint.adj <- get.adjacency(joint)
+# g <- gs[[14]]
+# adj <- adjs[[14]]
+# tri <- tris[[14]]
+# 
+# gdist <- getEdgesSpatialDistance(br6471_p, adj)
+```
+
+```{r}
+pdf("delaunayPlots-k25.pdf")
+tri.ps <- c()
+tris <- list()
+set.seed(10052023)
+for(clust in unique(br6471_p$louvain25)){
+    print(clust)
+    colData(br6471_p)[clust] <- br6471_p$louvain25==clust
+    
+    # do the triangulation and plot it on the tissue
+    del <- plotDelaunay(br6471_p, clust)
+    p <-del$p
+    tri <- del$tri
+    tris <- rlist::list.append(tris, tri)
+    
+    # get the adjacency matrix
+    adj <- delaunayAdjacencyMatrix(br6471_p, tri)
+    
+    # get the edge lengths
+    gdist <- getEdgesSpatialDistance(br6471_p, adj)
+    
+    # plot the histogram of the edge lengths
+    weight.df <- data.frame(weight=E(gdist)$weight)
+    
+    h <- ggplot(weight.df, aes(x=weight))+
+        geom_histogram(bins=50)+
+        xlab("Edge lengths")
+    print(p + h)
+    
+}
+dev.off()
 ```
 
