@@ -181,12 +181,6 @@ getEdgesSpatialDistance <- function(sfe, adj){
 prune_global_long_edges <- function(sfe, adj){
     
 }
-
-# g <- gs[[14]]
-# adj <- adjs[[14]]
-# tri <- tris[[14]]
-# 
-# gdist <- getEdgesSpatialDistance(br6471_p, adj)
 ```
 
 ```{r}
@@ -220,5 +214,30 @@ for(clust in unique(br6471_p$louvain25)){
     
 }
 dev.off()
+```
+```{r}
+compute_global_edge_constraint <- function(g, vertex){
+    # compute the global edge constraint for a single vertex detailed in https://www.sciencedirect.com/science/article/pii/S0098300411004419#s0010
+    # compute the global edge length mean and variation
+    global_mean <- mean(E(g)$weight)
+    global_variation <- sd(E(g)$weight)
+    
+    # get the vertex's edge length to its neighbours
+    incident.els <- incident(g, vertex)$weight
+    #print(incident.els)
+    #print(nn)
+    
+    local_mean <- mean(incident.els)
+    #print(local_mean)
+    
+    alpha <- global_mean/local_mean
+    
+    global_constraint <- global_mean + alpha*global_variation
+    
+    return(global_constraint)
+}
+
+gc <- compute_global_edge_constraint(g=gdist, vertex="ccohoonn-1")
+gc
 ```
 
