@@ -135,47 +135,21 @@ delaunayAdjacencyMatrix <- function(sfe, tri){
 
 
 ```{r}
-getEdgesSpatialDistance <- function(sfe, adj){
-    # build the graph
-    g <- graph_from_adjacency_matrix(adj)
-
-    # provide the x and y cell centroids for each cell 
-    inds <- which(sfe$cell_id %in% V(g)$name)
-    V(g)$x_coords <- spatialCoords(sfe)[,1][inds]
-    V(g)$y_coords <- spatialCoords(sfe)[,2][inds]
+getEdgesSpatialDistance <- function(tri){
+    edges <- arcs(tri)
+    # get the x,y coordinates for each edge
+    from.x <- tri$x[edges[,1]]
+    from.y <- tri$y[edges[,1]]
     
-    # get the edgelist to easily compute distances 
-    el <- get.edgelist(g)
+    to.x <- tri$x[edges[,2]]
+    to.y <- tri$x[edges[,2]]
     
+    # compute the edge length
+    edge.lengths <- sqrt((from.x-to.x)^2 + (from.y-to.y)^2)
     
-    # make a coordinates dataframe that's easier to query
-    coords_df <- as.data.frame(cbind(name=V(g)$name, 
-                       x=V(g)$x_coords, 
-                       y=V(g)$y_coords))
+    tri$arcs <- cbind(arcs(tri), edge.lengths)
     
-    # Find the coordinates of the first vertex for each edge
-    start_coords <- coords_df %>%
-        filter(name %in% el[,1])
-    # Match the order of the coordinates to the order that they appear in the edgelist 
-    start_coords <- start_coords[match(el[,1], start_coords$name),]
-    
-    # Do the same for the second vertex of each edge
-    end_coords <- coords_df %>%
-        filter(name %in% el[,2])
-    
-    end_coords <- end_coords[match(el[,2], end_coords$name),]
-    
-    # Compute the length (euclidean distance) for each edge
-    
-    dists <- sqrt((as.numeric(start_coords$x) -     as.numeric(end_coords$x))^2 + 
-                      (as.numeric(start_coords$y) - as.numeric(end_coords$y))^2)
-    #print(dists)
-    
-    # save the lengths as the edge weights
-    E(g)$weight <- dists
-    
-    return(g)
-    
+    return(tri)
 }
 
 prune_global_long_edges <- function(sfe, adj){
@@ -207,9 +181,17 @@ for(clust in unique(br6471_p$louvain25)){
     to.y <- tri$y[tri$arcs[,2]]
 
     seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
-
+    
+    x_min <- min(spatialCoords(br6471_p)[,1])
+    y_min <- min(spatialCoords(br6471_p)[,2])
+    
+    
+    scale.df <- data.frame(x=x_min + 100, xend=x_min + 600,
+                           y=y_min+100, yend=y_min+100, text="500um")
     p <- plotGeometry(br6471_p, type="cellSeg")+
-        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))
+        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
+        geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
+        geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))
     
     # get the adjacency matrix
     adj <- delaunayAdjacencyMatrix(br6471_p, tri)
@@ -230,27 +212,30 @@ for(clust in unique(br6471_p$louvain25)){
 }
 dev.off()
 ```
+
 ```{r}
-computeGlobalEdgeConstraint <- function(g, vertex){
+computeGlobalEdgeConstraint <- function(tri, vertex){
     # compute the global edge constraint for a single vertex detailed in https://www.sciencedirect.com/science/article/pii/S0098300411004419#s0010
     
-    # compute the global edge length mean and variation
-    global_mean <- mean(E(g)$weight)
-    global_variation <- sd(E(g)$weight)
+    edges <- tri$arcs
+    # compute the global edge length mean and sd
+    global_mean <- mean(edges[,3])
+    global_variation <- sd(edges[,3])
     
-    # get the vertex's edge length to its neighbours
-    incident.els <- incident(g, vertex)$weight
+    # find the neighbours of the given vertex
+    nn <- rbind(edges[which(edges[,1] ==vertex),],
+                edges[which(edges[,2] ==vertex),])
     
-    local_mean <- mean(incident.els)
+    # compute the mean the neighbouring edge lengths
+    local_mean <- mean(nn[,3])
+    alpha <- global_mean / local_mean
     
-    alpha <- global_mean/local_mean
+    global_distance_constraint <- global_mean + alpha * global_variation
     
-    global_constraint <- global_mean + alpha*global_variation
-    
-    return(global_constraint)
+    return(global_distance_constraint)
 }
 
-gc <- computeGlobalEdgeConstraint(g=gdist, vertex="ccohoonn-1")
+gc <- computeGlobalEdgeConstraint(tri, vertex=1)
 gc
 ```
 ```{r}
