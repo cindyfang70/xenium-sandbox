@@ -171,7 +171,7 @@ getEdgesSpatialDistance <- function(tri){
     from.y <- tri$y[edges$from]
     
     to.x <- tri$x[edges$to]
-    to.y <- tri$x[edges$to]
+    to.y <- tri$y[edges$to]
     
     # compute the edge length
     edge.lengths <- sqrt((from.x-to.x)^2 + (from.y-to.y)^2)
@@ -239,7 +239,7 @@ computeGlobalEdgeConstraint <- function(tri, vertex){
     local_mean <- mean(nn$edge.lengths)
     alpha <- global_mean / local_mean
     
-    global_distance_constraint <- global_mean + alpha * global_variation
+    global_distance_constraint <- global_mean + 0.25*alpha * global_variation
     
     return(global_distance_constraint)
 }
@@ -258,36 +258,92 @@ identifyGlobalLongEdges <- function(tri, vertex, global_constraint){
     nn <- rbind(edges[which(edges$from == vertex),],
                 edges[which(edges$to == vertex),])
     
+    # identify the neighbours with long edges
     nnLong <- nn[which(nn$edge.lengths > global_constraint),]
     
-    # indicate which edges are long and store it in the triangulation
+    # find the indices of long edges
     longInds <- which(rownames(edges) %in% rownames(nnLong))
     
     return(longInds)
 }
 
-pdf("delaunaypruned-k25.pdf")
-# find the global constraint for each node
-for (j in 1:length(tris)){
-    tri <- tris[[j]]
-    tri <- getEdgesSpatialDistance(tri)
-    summary(tri)
-    longInds <- c()
-    for (i in 1:tri$n){
-        gc <- computeGlobalEdgeConstraint(tri, i)
-        #print(gc)
-        long <- identifyGlobalLongEdges(tri, i, gc)
-        longInds <- c(longInds, long)
-    # print("global constraint")
-    # print(gc)
-    }
-    p <- plotDelaunay(tri, br6471_p)
-    globalPrunedtri <- tri
-    globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
+# pdf("delaunaypruned-k25.pdf")
+# # find the global constraint for each node
+# for (j in 1:length(tris)){
+#     tri <- tris[[j]]
+#     tri <- getEdgesSpatialDistance(tri)
+#     summary(tri)
+#     longInds <- c()
+#     for (i in 1:tri$n){
+#         gc <- computeGlobalEdgeConstraint(tri, i)
+#         long <- identifyGlobalLongEdges(tri, i, gc)
+#         longInds <- c(longInds, long)
+#     }
+#     p <- plotDelaunay(tri, br6471_p)
+#     globalPrunedtri <- tri
+#     globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
+# 
+#     pruned.p <- plotDelaunay(globalPrunedtri, br6471_p)
+#     print(p + pruned.p)
+# }
+#dev.off()
+```
 
-    pruned.p <- plotDelaunay(globalPrunedtri, br6471_p)
-    print(p + pruned.p)
+```{r}
+# let's see why the heck some of these hugely long edges are not getting pruned >:( 
+
+tri <- tris[[16]]
+tri <- getEdgesSpatialDistance(tri)
+longInds <- c()
+gcs <- c()
+for (i in 1:tri$n){
+    gc <- computeGlobalEdgeConstraint(tri, i)
+    long <- identifyGlobalLongEdges(tri, i, gc)
+    #print(tri$arcs[long,])
+    longInds <- c(longInds, long)
+    gcs <- c(gcs, gc)
 }
-dev.off()
+longInds <- unique(longInds)
+
+p <- plotDelaunay(tri, br6471_p)
+globalPrunedtri <- tri
+globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
+
+pruned.p <- plotDelaunay(globalPrunedtri, br6471_p)
+p + pruned.p
+
+which.max(globalPrunedtri$arcs$edge.lengths)
+# [1] 125
+globalPrunedtri$arcs[125,]
+       # from  to edge.lengths
+# 840-842  840 842     7634.015
+
+nn <- rbind(edges[which(tri$arcs$from == 840),],
+                edges[which(tri$arcs$to == 840),])
+
+global_mean <- mean(tri$arcs$edge.lengths)
+local_mean <- mean(nn$edge.lengths)
+global_variation <- sd(tri$arcs$edge.lengths)
+
+alpha <- global_mean / local_mean
+
+cons <- global_mean + 0.25*alpha*global_variation
+
+tri.max <- globalPrunedtri
+tri.max$arcs <- tri.max$arcs[which.max(tri.max$arcs$edge.lengths),]
+
+from.x <- tri.max$x[tri.max$arcs$from]
+from.y <- tri.max$y[tri.max$arcs$from]
+
+to.x <- tri.max$x[tri.max$arcs$to]
+to.y <- tri.max$y[tri.max$arcs$to]
+
+sqrt((from.x-to.x)^2 + (from.y-to.y)^2)
+# [1] 39.08771
+# but in the tri.max object, this edge length is like in the 7000s. 
+# something has to be wrong with getEdgesSpatialDistance...
+
+plotDelaunay(tri.max, br6471_p)
+
 ```
 
