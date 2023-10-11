@@ -84,26 +84,53 @@ plotSpatialFeature(br6471_p, "isLou15", colGeometryName = "cellSeg")
 ```
 
 ```{r}
-plotDelaunay <- function(sfe, cluster){
+delaunay <- function(sfe, cluster, seed){
+    set.seed(seed)
     celltype.coords <- spatialCoords(sfe)[colData(sfe)[[cluster]],]
     
     tri <- interp::tri.mesh(x=celltype.coords[,1],
                         y=celltype.coords[,2])
-    #print(summary(tri))
-
-    tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
-    p <- plotGeometry(sfe, type="cellSeg")+
-        ggforce::geom_delaunay_segment(data=tri.df, aes(x=x, y=y), colour="blue")
-    return(list(p=p, tri=tri))
+    
+    # save the arcs as a data frame for easier usage later 
+    tri$arcs <- as.data.frame(tri$arcs)
+    rownames(tri$arcs) <- paste(tri$arcs$from, tri$arcs$to, sep="-")
+    return(tri)
+    
 }
+
+plotDelaunay <- function(tri, sfe){
+    # make the data frame for the line segments of the triangulation
+    from.x <- tri$x[tri$arcs$from]
+    from.y <- tri$y[tri$arcs$from]
+
+    to.x <- tri$x[tri$arcs$to]
+    to.y <- tri$y[tri$arcs$to]
+    
+
+    seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
+    
+    # compute coordinates for placing the scale bar
+    x_min <- min(spatialCoords(sfe)[,1])
+    y_min <- min(spatialCoords(sfe)[,2])
+    scale.df <- data.frame(x=x_min + 100, xend=x_min + 600,
+                           y=y_min+100, yend=y_min+100, text="500um")
+    
+    p <- plotGeometry(sfe, type="cellSeg")+
+        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
+        geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
+        geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))
+    
+    return(p)
+    }
+
 
 ```
 
 ```{r}
 delaunayAdjacencyMatrix <- function(sfe, tri){
     # get the x and y indices of the spatial coordinates that are in the triangulation
-    x.inds <- which(spatialCoords(br6471_p)[,1]%in%tri$x)
-    y.inds <- which(spatialCoords(br6471_p)[,2]%in%tri$y)
+    x.inds <- which(spatialCoords(sfe)[,1]%in%tri$x)
+    y.inds <- which(spatialCoords(sfe)[,2]%in%tri$y)
     
     # find the intersecting x and y indices, these are the coordinates that are actually 
     # in the triangulation
@@ -138,11 +165,11 @@ delaunayAdjacencyMatrix <- function(sfe, tri){
 getEdgesSpatialDistance <- function(tri){
     edges <- arcs(tri)
     # get the x,y coordinates for each edge
-    from.x <- tri$x[edges[,1]]
-    from.y <- tri$y[edges[,1]]
+    from.x <- tri$x[edges$from]
+    from.y <- tri$y[edges$from]
     
-    to.x <- tri$x[edges[,2]]
-    to.y <- tri$x[edges[,2]]
+    to.x <- tri$x[edges$to]
+    to.y <- tri$x[edges$to]
     
     # compute the edge length
     edge.lengths <- sqrt((from.x-to.x)^2 + (from.y-to.y)^2)
@@ -158,76 +185,54 @@ prune_global_long_edges <- function(sfe, adj){
 ```
 
 ```{r}
-pdf("delaunayPlots-k25.pdf")
+#pdf("delaunayPlots-k25.pdf")
 tri.ps <- c()
 tris <- list()
-set.seed(10052023)
-for(clust in unique(br6471_p$louvain25)){
+
+for(i in 1:length(unique(br6471_p$louvain25))){
+    clust <- unique(br6471_p$louvain25)[[i]]
     print(clust)
     colData(br6471_p)[clust] <- br6471_p$louvain25==clust
     
     # do the triangulation and plot it on the tissue
-    del <- plotDelaunay(br6471_p, clust)
-    #p <-del$p
-    tri <- del$tri
+    tri <- delaunay(br6471_p, clust, seed=i)
     tris <- rlist::list.append(tris, tri)
     
-    tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
-
-    from.x <- tri$x[tri$arcs[,1]]
-    from.y <- tri$y[tri$arcs[,1]]
-
-    to.x <- tri$x[tri$arcs[,2]]
-    to.y <- tri$y[tri$arcs[,2]]
-
-    seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
-    
-    x_min <- min(spatialCoords(br6471_p)[,1])
-    y_min <- min(spatialCoords(br6471_p)[,2])
-    
-    
-    scale.df <- data.frame(x=x_min + 100, xend=x_min + 600,
-                           y=y_min+100, yend=y_min+100, text="500um")
-    p <- plotGeometry(br6471_p, type="cellSeg")+
-        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
-        geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
-        geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))
-    
+    p <- plotDelaunay(tri, br6471_p)
     # get the adjacency matrix
-    adj <- delaunayAdjacencyMatrix(br6471_p, tri)
+    #adj <- delaunayAdjacencyMatrix(br6471_p, tri)
     
     # get the edge lengths
-    gdist <- getEdgesSpatialDistance(br6471_p, adj)
+    #gdist <- getEdgesSpatialDistance(br6471_p, adj)
     
     # plot the histogram of the edge lengths
-    weight.df <- data.frame(weight=E(gdist)$weight) %>%
-        filter(weight < 1000)
-    
-    h <- ggplot(weight.df, aes(x=weight))+
-        #geom_histogram(bins=50)+
-        geom_density()+
-        xlab("Edge lengths")
-    print(p + h)
+    # weight.df <- data.frame(weight=E(gdist)$weight) %>%
+    #     filter(weight < 1000)
+    # 
+    # h <- ggplot(weight.df, aes(x=weight))+
+    #     #geom_histogram(bins=50)+
+    #     geom_density()+
+    #     xlab("Edge lengths")
+    # print(p + h)
     
 }
-dev.off()
+#dev.off()
 ```
 
 ```{r}
 computeGlobalEdgeConstraint <- function(tri, vertex){
     # compute the global edge constraint for a single vertex detailed in https://www.sciencedirect.com/science/article/pii/S0098300411004419#s0010
-    
     edges <- tri$arcs
     # compute the global edge length mean and sd
-    global_mean <- mean(edges[,3])
-    global_variation <- sd(edges[,3])
+    global_mean <- mean(edges$edge.lengths)
+    global_variation <- sd(edges$edge.lengths)
     
     # find the neighbours of the given vertex
-    nn <- rbind(edges[which(edges[,1] ==vertex),],
-                edges[which(edges[,2] ==vertex),])
+    nn <- rbind(edges[which(edges$from ==vertex),],
+                edges[which(edges$to ==vertex),])
     
-    # compute the mean the neighbouring edge lengths
-    local_mean <- mean(nn[,3])
+    # compute the mean of neighbouring edge lengths
+    local_mean <- mean(nn$edge.lengths)
     alpha <- global_mean / local_mean
     
     global_distance_constraint <- global_mean + alpha * global_variation
@@ -239,25 +244,24 @@ gc <- computeGlobalEdgeConstraint(tri, vertex=1)
 gc
 ```
 ```{r}
-identifyGlobalLongEdges <- function(g, global_constraint){
-    isLong <- E(g)$weight > global_constraint
-    E(g)$isLong <- isLong
-    return(g)
+identifyGlobalLongEdges <- function(tri, vertex, global_constraint){
+    
+    edges <- tri$arcs
+    
+    # find the neighbours of the given vertex
+    nn <- rbind(edges[which(edges$from ==vertex),],
+                edges[which(edges$to ==vertex),])
+    
+    nnLong <- nn[which(nn[,3] > global_constraint),]
+    
+    # indicate which edges are long and store it in the triangulation
+    longInds <- which(rownames(edges)%in%rownames(nnLong))
+    edges$isGlobalLongEdge[longInds] <- TRUE
+    
+    tri$arcs <- edges
+    
+    return(tri)
 }
 
-gdistLong <- identifyGlobalLongEdges(gdist, gc)
-tri.df <- as.data.frame(cbind(x=tri$x, y=tri$y))
-
-from.x <- tri$x[tri$arcs[,1]]
-from.y <- tri$y[tri$arcs[,1]]
-
-to.x <- tri$x[tri$arcs[,2]]
-to.y <- tri$y[tri$arcs[,2]]
-
-seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
-
-plotGeometry(br6471_p, type="cellSeg")+
-    geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))
-   # 
 ```
 
