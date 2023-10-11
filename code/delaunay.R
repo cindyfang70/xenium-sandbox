@@ -71,7 +71,7 @@ Voyager::ElbowPlot(br6471_p, reduction="GLM-PCA", ndims=50)
 ```
 
 ```{r}
-set.seed(10112023)
+set.seed()
 g25 <- scran::buildSNNGraph(br6471_p, k=25, use.dimred = "GLM-PCA")
 lou25 <- igraph::cluster_louvain(g25)
 br6471_p$louvain25 <- paste0("Lou", lou25$membership)
@@ -180,7 +180,7 @@ getEdgesSpatialDistance <- function(tri){
     
     return(tri)
 }
-#tri <- getEdgesSpatialDistance(tri)
+tri <- getEdgesSpatialDistance(tri)
 
 # prune_global_long_edges <- function(sfe, adj){
 #     
@@ -233,7 +233,7 @@ computeGlobalEdgeConstraint <- function(tri, vertex){
     # find the neighbours of the given vertex
     nn <- rbind(edges[which(edges$from ==vertex),],
                 edges[which(edges$to ==vertex),])
-    #print(nn)
+    print(nn)
     
     # compute the mean of neighbouring edge lengths
     local_mean <- mean(nn$edge.lengths)
@@ -244,7 +244,6 @@ computeGlobalEdgeConstraint <- function(tri, vertex){
     return(global_distance_constraint)
 }
 
-tri <- getEdgesSpatialDistance(tri)
 gc <- computeGlobalEdgeConstraint(tri, vertex=1)
 gc
 ```
@@ -270,12 +269,11 @@ pdf("delaunaypruned-k25.pdf")
 # find the global constraint for each node
 for (j in 1:length(tris)){
     tri <- tris[[j]]
-    tri <- getEdgesSpatialDistance(tri)
     summary(tri)
     longInds <- c()
     for (i in 1:tri$n){
         gc <- computeGlobalEdgeConstraint(tri, i)
-        #print(gc)
+        print(gc)
         long <- identifyGlobalLongEdges(tri, i, gc)
         longInds <- c(longInds, long)
     # print("global constraint")
@@ -290,4 +288,5 @@ for (j in 1:length(tris)){
 }
 dev.off()
 ```
+
 
