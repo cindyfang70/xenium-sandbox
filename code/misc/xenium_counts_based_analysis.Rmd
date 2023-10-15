@@ -1,0 +1,417 @@
+---
+title: "Xenium Counts Based Analysis"
+output: html_document
+date: "2023-09-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages({
+    library(Voyager)
+    library(SFEData)
+    library(patchwork)
+    library(SpatialFeatureExperiment)
+    library(SingleCellExperiment)
+    library(SpatialExperiment)
+    library(ggplot2)
+    library(bluster)
+    library(stringr)
+    library(scuttle)
+    library(BiocSingular)
+    library(scater)
+    library(rjson)
+    library(Matrix)
+    library(DropletUtils)
+    library(vroom)
+    library(arrow)
+    library(sf)
+    library(AnnotationDbi)
+    library(org.Hs.eg.db)
+    library(BiocParallel)
+    library(dplyr)
+    library(here)
+})
+# load helper functions
+source(here("code/xenium_helpers.R"))
+```
+
+```{r}
+data_dir <- "output-XETG00089__0005434__Region_1__20230831__172339"
+sfe <- readXenium(data_dir)
+
+# Assign one of three region names to each cell, first create a dummy coldata variable.
+sfe$region_id <- "Sample"
+
+# Br6571_Post
+br6471_post_ids <- readr::read_csv2(here("data", data_dir, "Br6471_post_cell_ids.csv"))
+
+br6471_post_ids <- br6471_post_ids %>%
+  tidyr::separate(everything(), sep="\\,", into=c("cell_id", NA, NA, NA))
+br6471_post_ids <- br6471_post_ids[-c(1,2),]
+ 
+br6471_inds <- which(sfe$cell_id %in% br6471_post_ids$cell_id)
+
+#Br6522_Post
+br6522_post_ids <- readr::read_csv2(here("data", data_dir, "Br6522_post_cell_ids.csv"))
+
+br6522_post_ids <- br6522_post_ids %>%
+  tidyr::separate(everything(), sep="\\,", into=c("cell_id", NA,NA,NA))
+
+br6522_post_ids <- br6522_post_ids[-c(1,2),]
+br6522_inds <- which(sfe$cell_id %in% br6522_post_ids$cell_id)
+
+# Br8667_Mid
+br8667_mid_ids <- readr::read_csv2(here("data", data_dir, "Br8667_mid_cell_ids.csv"))
+
+br8667_mid_ids <- br8667_mid_ids %>%
+  tidyr::separate(everything(), sep="\\,", into=c("cell_id", NA,NA,NA))
+
+br8667_mid_ids <- br8667_mid_ids[-c(1,2),]
+br8667_inds <- which(sfe$cell_id %in% br8667_mid_ids$cell_id)
+
+# Add region id to the sfe
+sfe$region_id[br6471_inds]<- "BR6471_Post"
+sfe$region_id[br6522_inds] <- "BR6522_Post"
+sfe$region_id[br8667_inds] <- "BR8667_Mid"
+
+sfe$region_id
+
+br6471 <- sfe[,which(sfe$region_id == "BR6471_Post")]
+br6522 <- sfe[,which(sfe$region_id == "BR6522_Post")]
+br8667 <- sfe[,which(sfe$region_id == "BR8667_Mid")]
+
+saveRDS(br6471, here("data", data_dir, "BR6471_Post-SFE.RDS"))
+saveRDS(br6522, here("data", data_dir, "BR6522_Post-SFE.RDS"))
+saveRDS(br8667, here("data", data_dir, "BR8667_Mid-SFE.RDS"))
+```
+
+```{r}
+# read in the data
+
+
+# Marker genes from the SpatialLIBD paper
+human_markers <-
+    c(
+        "SNAP25",
+        "MBP",
+        "MOBP",
+        "PCP4",
+        "RELN",
+        "AQP4",
+        "CUX2",
+        "CCK",
+        "HPCAL1",
+        "NR4A2",
+        "RORB"
+    )
+new_markers <-
+    c(
+        "CLDN5",
+        "C1QL2",
+        "APOE",
+        "MSX1",
+        "SPARC"
+    )
+all_markers <- c(human_markers[which(human_markers %in% rownames(sfe))], 
+                 new_markers[which(new_markers %in% rownames(sfe))])
+
+plotSpatialFeature(sfe, "MOBP", exprs_values = "counts")
+plotSpatialFeature(sfe, "nucleus_area", colGeometryName = "nucSeg")
+
+plotColData(sfe, x="nucleus_area", y="nGenes", bin=100)
+plotColData(sfe, x="nucleus_area", y="nCounts", bin=100)
+
+plotColData(sfe, x="cell_area", y="nucleus_area", bins = 100)
+```
+
+```{r}
+# Quality control
+cols_use <- names(colData(sfe))[str_detect(names(colData(sfe)), "_percent$")]
+cols_use <- cols_use[!grepl("anti", cols_use)] # no antisense controls detected, so avoid dividing by zero
+
+#plotColDataHistogram(sfe, cols_use, bins = 100, ncol = 3)+
+    #scale_x_log10()+
+    #annotation_logticks(sides = "b")
+
+cols_use2 <- names(colData(sfe))[str_detect(names(colData(sfe)), "_detected$")]
+cols_use2 <- cols_use2[!grepl("anti", cols_use)] 
+
+get_neg_ctrl_outliers <- function(col, sfe) {
+    inds <- colData(sfe)$nCounts > 0 & colData(sfe)[[col]] > 0
+    df <- colData(sfe)[inds,]
+    #print(rownames(df))
+    outlier_inds <- isOutlier(df[[col]], type = "higher")
+    #print(outlier_inds)
+    #print(outlier_inds)
+    outliers <- rownames(df)[outlier_inds]
+    #print(outliers)
+    col2 <- str_remove(col, "^subsets_")
+    col2 <- str_remove(col2, "_percent$")
+    new_colname <- paste("is", col2, "outlier", sep = "_")
+    colData(sfe)[[new_colname]] <- colnames(sfe) %in% outliers
+    sfe
+}
+
+for (n in cols_use) {
+    sfe <- get_neg_ctrl_outliers(n, sfe)
+}
+
+#plotColData(sfe, x="nucleus_area", y="subsets_anti_percent", bin=100)
+
+inds_keep <- sfe$nCounts > 0  & !sfe$is_blank_outlier & !sfe$is_negCodeword_outlier & !sfe$is_negProbe_outlier & !sfe$is_depr_outlier
+sfe <- sfe[,inds_keep] # 9020 cells were discarded
+
+
+```
+
+
+```{r}
+# plot the mean variance relationship
+plotMeanVar(mean_emp=rowData(sfe)$means,
+            var_emp=rowData(sfe)$vars,
+            plotTitle="Xenium DLPFC")
+
+```
+
+```{r}
+# Compute null residuals and run PCA
+sfe <- scry::nullResiduals(sfe, assay="counts", fam="poisson", type="pearson")
+sfe <- scater::runPCA(sfe, ncomponents=50, 
+                      ntop = 1000,
+                      exprs_values = "poisson_pearson_residuals",
+                      scale = TRUE, name = "GLM-PCA",
+                      BSPARAM = BiocSingular::RandomParam())
+plotReducedDim(sfe,ncomponents=4, colour_by="region_id", dimred="GLM-PCA")
+#ElbowPlot(sfe, reduction="GLM-PCA", ndims=50)
+
+# Normalize and run PCA
+sfe <- scuttle::logNormCounts(sfe)
+sfe <- scater::runPCA(sfe, ncomponents=30, scale=TRUE,
+                      exprs_values="logcounts")
+#ElbowPlot(sfe, reduction="PCA", ndims=30)
+plotReducedDim(sfe,ncomponents=4, colour_by="region_id", dimred="PCA")
+```
+
+
+```{r}
+g25 <- scran::buildSNNGraph(sfe, k=25, use.dimred = "GLM-PCA")
+lou25 <- igraph::cluster_louvain(g25)
+sfe$louvain25 <- paste0("Lou", lou25$membership)
+
+sil25 <- approxSilhouette(reducedDim(sfe, "GLM-PCA"), sfe$louvain25)
+
+bp.glm.25 <- ggplot(as.data.frame(sil25), aes(x=cluster, y=width))+
+    geom_boxplot()+
+    ggtitle("GLM-PCA, k=25")
+
+mean(sil25$width)
+purity25 <- neighborPurity(reducedDim(sfe, "GLM-PCA"), sfe$louvain25)
+
+# sfe <- logNormCounts(sfe)
+# markers25 <- scran::findMarkers(sfe, 
+#                         groups = colData(sfe)$louvain25,
+#                        test.type = "wilcox", 
+#                        pval.type = "all", direction = "up")
+
+sf.glm.25 <- plotSpatialFeature(sfe, "louvain25", colGeometryName = "cellSeg")
+pca.louv25 <- plotReducedDim(sfe, ncomponents=4, colour_by="louvain25", dimred="GLM-PCA")
+
+
+# try clustering but with normalization first 
+
+norm.g25 <- scran::buildSNNGraph(sfe, k=25, use.dimred = "PCA")
+norm.lou25 <- igraph::cluster_louvain(norm.g25)
+sfe$norm.louvain25 <- paste0("Lou", norm.lou25$membership)
+
+pca.norm.louv25 <- plotReducedDim(sfe, dimred="PCA", colour_by="norm.louvain25", ncomponents=4)
+sf.norm.25 <- plotSpatialFeature(sfe, "norm.louvain25", colGeometryName = "cellSeg")
+
+norm.sil25 <- approxSilhouette(reducedDim(sfe, "PCA"), sfe$norm.louvain25)
+
+bp.norm.25 <-  ggplot(as.data.frame(norm.sil25), aes(x=cluster, y=width))+
+    geom_boxplot()+
+    ggtitle("Norm-PCA, k=25")
+
+sf.glm.25 + sf.norm.25
+pca.louv25
+pca.norm.louv25
+bp.glm.25 + bp.norm.25
+```
+
+```{r}
+# some expression plots for k=25
+plotExpression(sfe, features=all_markers, x="louvain25", exprs_values="counts",
+               colour_by="louvain25", 
+                     show_median=TRUE,
+                     show_violin=TRUE,)+
+    theme(axis.text.x=element_text(angle=90))
+
+
+```
+
+```{r}
+# trying fasthplus
+library(fasthplus)
+
+glm.pca <- reducedDim(sfe, "GLM-PCA")
+dim(glm.pca)
+# [1] 151975     50
+
+# D: obs x features matrix, L: labels, t: pre-bootstrap sample size, r: number of bootstrap interations (default 30)
+hplus <- hpb(D=glm.pca, L=colData(sfe)$louvain25, t=151, r=30)
+hplus # [1] 0.2321421
+
+norm.pca <- reducedDim(sfe, "PCA")
+norm.hplus <- hpb(D=norm.pca, L=sfe$norm.louvain25, t=151, r=30)
+norm.hplus # [1] 0.1191054
+```
+
+```{r}
+# try finding marker genes
+glm.markers <- scran::findMarkers(counts(sfe), test.type="binom",
+                                  groups=sfe$louvain25) # this seems to be numerically unstable...
+pca.markers <- scran::findMarkers(logcounts(sfe), test.type="binom",
+                                  groups=sfe$norm.louvain25) # this is also numerically unstable
+
+```
+
+```{r}
+library(DESeq2)
+# let's try DESeq2 for one cluster first
+sfe$isLou1 <- sfe$louvain25 == "Lou1"
+summed <- aggregateAcrossCells(sfe, ids=sfe$louvain25)
+summed$sizeFactor <- NULL
+
+cts <- counts(summed)
+coldata <- colData(summed)
+
+dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = coldata,
+                              design = ~ isLou1)
+
+dds <- DESeq(dds)
+res <- results(dds)
+
+# find upregulated genes
+res.up <- res %>%
+    as.data.frame() %>%
+    filter(log2FoldChange > 0) %>%
+    arrange(desc(log2FoldChange))
+
+data<-as.data.frame(res)
+data <- data %>% 
+  mutate(
+    Expression = case_when(log2FoldChange >= 0 & padj <= 0.05 ~ "Upregulated",
+                           log2FoldChange <= 0 & padj <= 0.05 ~ "Downregulated",
+                           TRUE ~ "Unchanged")
+  )
+
+top_genes <- bind_rows(
+  data %>% 
+    filter(Expression == 'Upregulated') %>% 
+    arrange(padj, desc(abs(log2FoldChange))) %>% 
+    head(5),
+  data %>% 
+    filter(Expression == 'Downregulated') %>% 
+    arrange(padj, desc(abs(log2FoldChange))) %>% 
+    head(5)
+)
+
+p2 <- ggplot(data, aes(log2FoldChange, -log(padj,10))) +
+  geom_point(aes(color = Expression), size = 1/2) +
+  xlab(expression("log"[2]*"fold change")) + 
+  ylab(expression("-log"[10]*"adjusted p-value")) +
+  scale_color_manual(values = c("Downregulated"="indianred2", 
+                                "Unchanged"="gray50", 
+                                "Upregulated"="cornflowerblue")) +
+  guides(colour = guide_legend(override.aes = list(size=1.5)))+
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.line = element_line(colour = "black"),
+        legend.position='right') +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed")+
+  ggrepel::geom_text_repel(data = top_genes,
+                  mapping = aes(log2FoldChange, -log(padj,10),
+                  color=Expression,
+                  label=rownames(top_genes))) 
+
+# top 5 upreg: SOX10, CDH1 (oligo), ST18 (oligo), ERBB3, CNDP1
+# i think this is good bc judging by MOBP expression and the spatial plot this seems to be oligodendrocytes
+
+```
+
+```{r}
+findClusterMarkers <- function(sfe, testClust, labelsName){
+    
+    summed <- aggregateAcrossCells(sfe, ids=colData(sfe)[labelsName])
+    summed$sizeFactor <- NULL
+    
+    summed$condition <- colData(summed)[[labelsName]] == testClust
+    
+    cts <- counts(summed)
+    coldata <- colData(summed)
+
+    dds <- DESeqDataSetFromMatrix(countData = cts,
+                              colData = coldata,
+                              design = ~ condition)
+    
+    dds <- DESeq(dds)
+    res <- results(dds)
+    
+    return(res)
+}
+
+allMarkers <- c()
+plots <- list()
+for (i in 1:length(unique(sfe$louvain25))){
+    clust <- sfe$louvain25[[i]]
+    markers <- findClusterMarkers(sfe, testClust=clust, labelsName="louvain25")
+    allMarkers[[clust]] <- markers
+    
+    data<-as.data.frame(markers)
+    data <- data %>% 
+      mutate(
+        Expression = case_when(log2FoldChange >= 0 & padj <= 0.05 ~ "Upregulated",
+                               log2FoldChange <= 0 & padj <= 0.05 ~ "Downregulated",
+                               TRUE ~ "Unchanged")
+      )
+    
+    top_genes <- bind_rows(
+      data %>% 
+        filter(Expression == 'Upregulated') %>% 
+        arrange(padj, desc(abs(log2FoldChange))) %>% 
+        head(5),
+      data %>% 
+        filter(Expression == 'Downregulated') %>% 
+        arrange(padj, desc(abs(log2FoldChange))) %>% 
+        head(5)
+    )
+    print(top_genes)
+    
+    p <- ggplot(data, aes(log2FoldChange, -log(padj,10))) +
+      geom_point(aes(color = Expression), size = 1/2) +
+      xlab(expression("log"[2]*"fold change")) + 
+      ylab(expression("-log"[10]*"adjusted p-value")) +
+      scale_color_manual(values = c("Downregulated"="indianred2", 
+                                    "Unchanged"="gray50", 
+                                    "Upregulated"="cornflowerblue")) +
+      guides(colour = guide_legend(override.aes = list(size=1.5)))+
+      theme(panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_blank(), 
+            axis.line = element_line(colour = "black"),
+            legend.position='right') +
+      geom_hline(yintercept = -log10(0.05), linetype = "dashed")+
+      ggrepel::geom_text_repel(data = top_genes,
+                      mapping = aes(log2FoldChange, -log(padj,10),
+                      color=Expression,
+                      label=rownames(top_genes))) 
+    plots[[i]] <- p
+}
+
+nCol <- floor(sqrt(length(plots)))
+do.call("grid.arrange", c(plots, ncol=nCol))
+
+```
+
