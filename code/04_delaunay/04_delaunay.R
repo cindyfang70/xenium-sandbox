@@ -24,20 +24,21 @@ suppressPackageStartupMessages({
 # Perform Delaunay triangulation on each of the clusters  #
 # in the tissue, prune the global long edges, and plot.   #
 ###########################################################
-
 source(here("code", "cindy", "04_delaunay", "delaunay.R"))
+args <- commandArgs(trailingOnly = TRUE)
 print(args[[1]])
 sfe <- readRDS(args[[1]])
 clusterName <- args[[2]] # get the name of the clustering output to do the triangulation on
 
-tris <- c()
+tris <- list()
 for(i in 1:length(unique(colData(sfe)[[clusterName]]))){
-    clust <- colData(sfe)[[clusterName]][[i]]
+    clust <- unique(colData(sfe)[[clusterName]])[[i]]
     print(clust)
     colData(sfe)[clust] <- colData(sfe)[[clusterName]]==clust
     
     # do the triangulation 
     tri <- delaunay(sfe, clust, seed=i)
+    summary(tri)
     tris <- rlist::list.append(tris, tri)
 }
 
@@ -46,9 +47,10 @@ pdfname <- paste0(pdfname, ".pdf")
 
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
 plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
+print(length(tris))
 for (j in 1:length(tris)){
     tri <- tris[[j]]
-    
+    print(summary(tri))
     # compute the length of the edges
     tri <- getEdgesSpatialDistance(tri)
     
