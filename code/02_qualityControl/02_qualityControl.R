@@ -50,6 +50,9 @@ filterCells <- function(sfe){
         !sfe$is_negCodeword_outlier & sfe$nCounts > 0
     
     sfe <- sfe[,inds_keep]
+    
+    # remove the negative controls
+    sfe <- sfe[which(rowData(sfe)$Type=="Gene Expression"), ]
     return(sfe)
 }
 br6471_p_filt <- filterCells(br6471_p)
