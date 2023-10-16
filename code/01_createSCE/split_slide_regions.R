@@ -24,11 +24,11 @@ suppressPackageStartupMessages({
     library(here)
 })
 # load helper functions
-source(here("code/xenium_helpers.R"))
+source(here("code/01_createSCE/xenium_helpers.R"))
 
 
 #### Slide Number 5548 ####
-data_dir <- "output-XETG00089__0005548__Region_1__20230831__172339/"
+data_dir <- "slide-5548/"
 sfe <- readXenium(data_dir)
 
 # Assign one of three region names to each cell, first create a dummy coldata variable.
@@ -64,7 +64,7 @@ saveRDS(sfe, here("data", data_dir, "xenium-0005548-SFE.RDS"))
 
 
 #### Slide Number 5434 ####
-data_dir <- "output-XETG00089__0005434__Region_1__20230831__172339"
+data_dir <- "slide-5434"
 sfe <- readXenium(data_dir)
 
 # Assign one of three region names to each cell, first create a dummy coldata variable.
