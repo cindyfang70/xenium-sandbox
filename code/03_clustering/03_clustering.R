@@ -26,8 +26,11 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly=TRUE)
 
 # Read in the data
+print(args[[1]])
 sfe <- readRDS(args[[1]])
 numNeighbours <- args[[2]] # k parameter for clustering
+
+#sfe <- readRDS("data/slide-5434/Br8667_Mid_SFE_filt.RDS")
 
 print(sfe)
 
@@ -43,7 +46,7 @@ print('pca done')
 
 # cluster using louvain
 set.seed(10115023)
-g <- scran::buildSNNGraph(sfe, k=numNeighbours, use.dimred = "GLM-PCA")
+g <- scran::buildSNNGraph(sfe, k=as.numeric(numNeighbours), use.dimred = "GLM-PCA")
 lou <- igraph::cluster_louvain(g)
 
 # add the clusters back into the SFE object and save it
@@ -57,8 +60,8 @@ print(pdfname)
 
 # plot the PCA plots and the clusters on the tissue
 pdf(here("plots", "cindy", "03_clustering", pdfname))
-plotReducedDim(br6471_p, ncomponents=4, colour_by="total_counts", dimred="GLM-PCA")
-ElbowPlot(br6471_p, reduction="GLM-PCA", ndims=50)
-plotSpatialFeature(br6471_p, "isLou15", colGeometryName = "cellSeg") 
+plotReducedDim(sfe, ncomponents=4, colour_by="total_counts", dimred="GLM-PCA")
+ElbowPlot(sfe, reduction="GLM-PCA", ndims=50)
+plotSpatialFeature(sfe, clusterName, colGeometryName = "cellSeg") 
 dev.off()
 
