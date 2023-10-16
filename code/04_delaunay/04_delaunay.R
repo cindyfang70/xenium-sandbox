@@ -15,7 +15,6 @@ suppressPackageStartupMessages({
     library(BiocParallel)
     library(dplyr)
     library(here)
-    library(schex)
     library(ggforce)
     library(interp)
     library(igraph)
@@ -27,6 +26,7 @@ suppressPackageStartupMessages({
 ###########################################################
 
 source(here("code", "cindy", "04_delaunay", "delaunay.R"))
+print(args[[1]])
 sfe <- readRDS(args[[1]])
 clusterName <- args[[2]] # get the name of the clustering output to do the triangulation on
 
@@ -41,13 +41,16 @@ for(i in 1:length(unique(colData(sfe)[[clusterName]]))){
     tris <- rlist::list.append(tris, tri)
 }
 
-pdf("delaunaypruned-k25.pdf")
+pdfname <- paste(sfe$region_id[[1]], "delaunay", clusterName, sep="-")
+pdfname <- paste0(pdfname, ".pdf")
+
+pdf(here("plots", "cindy", "04_delaunay", pdfname))
 for (j in 1:length(tris)){
     tri <- tris[[j]]
     
     # compute the length of the edges
     tri <- getEdgesSpatialDistance(tri)
-    # summary(tri)
+    
     longInds <- c()
     for (i in 1:tri$n){
         # compute the global constraint and find the long edges
@@ -57,12 +60,16 @@ for (j in 1:length(tris)){
     }
     # plot the unpruned triangulation
     p <- plotDelaunay(tri, sfe)
-    globalPrunedtri <- tri
-    globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
+    hist <- plotEdgeLengthHistogram(tri)
     
     # plot the pruned tri
+    globalPrunedtri <- tri
+    globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
     pruned.p <- plotDelaunay(globalPrunedtri, sfe)
-    print(p + pruned.p)
+    pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (pruned)")
+    
+    do.call(grid.arrange, c(p, hist, pruned.p, pruned.hist), ncol=2)
 }
+    
 dev.off()
 

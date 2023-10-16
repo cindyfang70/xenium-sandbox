@@ -1,31 +1,27 @@
 suppressPackageStartupMessages({
     library(Voyager)
-    library(SFEData)
     library(patchwork)
     library(SpatialFeatureExperiment)
     library(SingleCellExperiment)
     library(SpatialExperiment)
     library(ggplot2)
-    library(bluster)
     library(stringr)
     library(scuttle)
     library(BiocSingular)
     library(scater)
     library(rjson)
     library(Matrix)
-    library(DropletUtils)
     library(vroom)
     library(sf)
     library(BiocParallel)
     library(dplyr)
     library(here)
-    library(schex)
     library(ggforce)
     library(interp)
     library(igraph)
     library(rlist)
 })
-source(here("code", "xenium_helpers.R"))
+source(here("code", "cindy", "01_createSCE", "xenium_helpers.R"))
 
 ###############################################################
 # helper functions for making delaunay triangulations.        #
@@ -144,4 +140,14 @@ identifyGlobalLongEdges <- function(tri, vertex, global_constraint){
     longInds <- which(rownames(edges) %in% rownames(nnLong))
     
     return(longInds)
+}
+
+plotEdgeLengthHistogram <- function(tri, title="Edge lengths"){
+    edges <- tri$arcs
+    
+    p <- ggplot(edges, aes(x=edge.lengths))+
+        geom_density()+
+        ggtitle(title)
+    
+    return(p)
 }
