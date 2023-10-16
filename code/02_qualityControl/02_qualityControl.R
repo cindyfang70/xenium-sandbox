@@ -26,10 +26,10 @@ suppressPackageStartupMessages({
 ################################################
 # Filter out low quality cells for each region #
 ################################################
-
+source(here("code", "01_createSCE", "xenium_helpers.R"))
 
 ##### Slide 5434 #####
-data_dir <- "output-XETG00089__0005434__Region_1__20230831__172339"
+data_dir <- "slide-5434"
 
 # Read in the three regions
 br6471_p <- readRDS(here("data", data_dir, "Br6471_Post_SFE.RDS"))
@@ -59,12 +59,12 @@ br8667_m_filt <- filterCells(br8667_m)
 
 saveRDS(br6471_p_filt, here("data", data_dir, "Br6471_Post_SFE_filt.RDS"))
 saveRDS(br6522_p_filt, here("data", data_dir, "Br6522_Post_SFE_filt.RDS"))
-saveRDS(br6522_p_filt , here("data", data_dir, "Br8667_Mid_SFE_filt.RDS"))
+saveRDS(br8667_m_filt , here("data", data_dir, "Br8667_Mid_SFE_filt.RDS"))
 
 
 ##### Slide 5548 #####
 
-data_dir <- "output-XETG00089__0005548__Region_1__20230831__172339"
+data_dir <- "slide-5548"
 
 # Read in the three regions
 br6471_p <- readRDS(here("data", data_dir, "Br6471_Post_SFE.RDS"))
