@@ -45,6 +45,7 @@ pdfname <- paste(sfe$region_id[[1]], "delaunay", clusterName, sep="-")
 pdfname <- paste0(pdfname, ".pdf")
 
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
+plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
 for (j in 1:length(tris)){
     tri <- tris[[j]]
     
