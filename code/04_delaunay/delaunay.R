@@ -144,6 +144,8 @@ identifyGlobalLongEdges <- function(tri, vertex, global_constraint){
 
 plotEdgeLengthHistogram <- function(tri, title="Edge lengths"){
     edges <- tri$arcs
+    edges <- edges %>%
+        filter(edge.lengths <= 1000)
     
     p <- ggplot(edges, aes(x=edge.lengths))+
         geom_density()+
