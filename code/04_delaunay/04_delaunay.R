@@ -19,6 +19,7 @@ suppressPackageStartupMessages({
     library(interp)
     library(igraph)
     library(rlist)
+    library(gridExtra)
 })
 ###########################################################
 # Perform Delaunay triangulation on each of the clusters  #
@@ -48,6 +49,7 @@ pdfname <- paste0(fname, ".pdf")
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
 plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
 #print(length(tris))
+globalPrunedTris <- list()
 for (j in 1:length(tris)){
     tri <- tris[[j]]
     print(summary(tri))
@@ -72,8 +74,10 @@ for (j in 1:length(tris)){
     pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (pruned)")
     
     do.call(grid.arrange, c(list(p, hist, pruned.p, pruned.hist), ncol=2))
-    saveRDS(globalPrunedtri, here("processed-data", "04_delaunay", paste0(fname, ".RDS")))
+    globalPrunedTris <- list.append(globalPrunedTris, globalPrunedtri)
+
 }
     
 dev.off()
+saveRDS(globalPrunedTris, here("processed-data", "cindy", "04_delaunay", paste0(fname, ".RDS")))
 

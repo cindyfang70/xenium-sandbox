@@ -8,10 +8,10 @@ suppressPackageStartupMessages({
     library(stringr)
     library(scuttle)
     library(BiocSingular)
-    library(scater)
-    library(rjson)
+    #library(scater)
+    #library(rjson)
     library(Matrix)
-    library(vroom)
+    #library(vroom)
     library(sf)
     library(BiocParallel)
     library(dplyr)
@@ -21,7 +21,7 @@ suppressPackageStartupMessages({
     library(igraph)
     library(rlist)
 })
-source(here("code", "cindy", "01_createSCE", "xenium_helpers.R"))
+#source(here("code", "cindy", "01_createSCE", "xenium_helpers.R"))
 
 ###############################################################
 # helper functions for making delaunay triangulations.        #
@@ -65,23 +65,24 @@ plotDelaunay <- function(tri, sfe){
     return(p)
 }
 
-delaunayAdjacencyMatrix <- function(sfe, tri){
+delaunayAdjacencyMatrix <- function(tri){
     # get the x and y indices of the spatial coordinates that are in the triangulation
-    x.inds <- which(spatialCoords(sfe)[,1]%in%tri$x)
-    y.inds <- which(spatialCoords(sfe)[,2]%in%tri$y)
+    #x.inds <- which(spatialCoords(sfe)[,1]%in%tri$x)
+    #y.inds <- which(spatialCoords(sfe)[,2]%in%tri$y)
     
     # find the intersecting x and y indices, these are the coordinates that are actually 
     # in the triangulation
-    celltype.inds <- intersect(x.inds, y.inds)
+    #celltype.inds <- intersect(x.inds, y.inds)
     
     # get the ids of the cells in the triangulation 
-    cell_ids <- sfe$cell_id[celltype.inds]
+    #cell_ids <- sfe$cell_id[celltype.inds]
     
     # get the adjacency matrix for the triangulation
-    adj <- get.adjacency(graph.edgelist(as.matrix(interp::arcs(tri)), directed=FALSE))
+    arcs <- tri$arcs[,-3]
+    adj <- get.adjacency(graph.edgelist(as.matrix(arcs), directed=FALSE))
     
     # add the cell ids to the column and rownames
-    dimnames(adj) <- list(cell_ids, cell_ids)
+    dimnames(adj) <- list(arcs$to, arcs$to)
     
     return(adj)
 }

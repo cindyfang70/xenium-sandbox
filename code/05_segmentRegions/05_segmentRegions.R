@@ -68,4 +68,10 @@ for (i in 1:length(tri)){
     plist <- list.append(plist, p)
 
 }
+
+fname <- paste(sfe$region_id[[1]], clusterName, "alphashape", sep="-")
+pdfname <- paste0(fname, ".pdf")
+
+pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
 do.call(gridExtra::grid.arrange, plist)
+dev.off()
