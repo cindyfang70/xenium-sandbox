@@ -21,14 +21,14 @@ suppressPackageStartupMessages({
 # Find the connected components within the pruned         #
 # triangulation graph, and compute the alpha shape        #
 ###########################################################
-
+args <- commandArgs(trailingOnly=TRUE)
 source(here("code","cindy","04_delaunay","delaunay.R"))
 sfe <- readRDS(args[[1]])
 tri <- readRDS(args[[2]])
 
-sfe <- readRDS("code/05_segmentRegions/Br2743_Mid_SFE_filt.RDS")
-tris <- readRDS("code/05_segmentRegions/Br2743_Mid_5548-delaunay-lou25.RDS")
-source(here("code","04_delaunay","delaunay.R"))
+#sfe <- readRDS("code/05_segmentRegions/Br2743_Mid_SFE_filt.RDS")
+#tris <- readRDS("code/05_segmentRegions/Br2743_Mid_5548-delaunay-lou25.RDS")
+#source(here("code","04_delaunay","delaunay.R"))
 
 plist <- list()
 for (i in 1:length(tri)){
