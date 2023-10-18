@@ -42,8 +42,8 @@ for(i in 1:length(unique(colData(sfe)[[clusterName]]))){
     tris <- rlist::list.append(tris, tri)
 }
 
-pdfname <- paste(sfe$region_id[[1]], "delaunay", clusterName, sep="-")
-pdfname <- paste0(pdfname, ".pdf")
+fname <- paste(sfe$region_id[[1]], "delaunay", clusterName, sep="-")
+pdfname <- paste0(fname, ".pdf")
 
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
 plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
@@ -72,6 +72,7 @@ for (j in 1:length(tris)){
     pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (pruned)")
     
     do.call(grid.arrange, c(list(p, hist, pruned.p, pruned.hist), ncol=2))
+    saveRDS(globalPrunedtri, here("processed-data", "04_delaunay", paste0(fname, ".RDS")))
 }
     
 dev.off()
