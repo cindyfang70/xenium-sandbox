@@ -1,8 +1,8 @@
 ArrayTaskID   SlideDirectory    SampleName
-1             slide-5434        Br6471_Post
-2             slide-5434        Br6522_Post
-3             slide-5434        Br8667_Mid
-4             slide-5548        Br2743_Mid
-5             slide-5548        Br6471_Post
-6             slide-5548        Br8667_Mid
+1             5434              Br6471_Post
+2             5434              Br6522_Post
+3             5434              Br8667_Mid
+4             5548              Br2743_Mid
+5             5548              Br6471_Post
+6             5548              Br8667_Mid
      
