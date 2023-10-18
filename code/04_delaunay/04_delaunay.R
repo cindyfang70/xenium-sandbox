@@ -47,7 +47,7 @@ pdfname <- paste0(pdfname, ".pdf")
 
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
 plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
-print(length(tris))
+#print(length(tris))
 for (j in 1:length(tris)){
     tri <- tris[[j]]
     print(summary(tri))
@@ -71,7 +71,7 @@ for (j in 1:length(tris)){
     pruned.p <- plotDelaunay(globalPrunedtri, sfe)
     pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (pruned)")
     
-    do.call(grid.arrange, c(p, hist, pruned.p, pruned.hist), ncol=2)
+    do.call(grid.arrange, c(list(p, hist, pruned.p, pruned.hist), ncol=2))
 }
     
 dev.off()
