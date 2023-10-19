@@ -48,6 +48,7 @@ pdfname <- paste0(fname, ".pdf")
 
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
 plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
+plotEdgeLengthViolin(tris)
 #print(length(tris))
 globalPrunedTris <- list()
 for (j in 1:length(tris)){
@@ -64,13 +65,13 @@ for (j in 1:length(tris)){
         longInds <- c(longInds, long)
     }
     # plot the unpruned triangulation
-    p <- plotDelaunay(tri, sfe)
+    p <- plotDelaunay(tri, sfe, clustName=sprintf("Lou%s", i))
     hist <- plotEdgeLengthHistogram(tri)
     
     # plot the pruned tri
     globalPrunedtri <- tri
     globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
-    pruned.p <- plotDelaunay(globalPrunedtri, sfe)
+    pruned.p <- plotDelaunay(globalPrunedtri, sfe, clustName=sprintf("Lou%s", i))
     pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (pruned)")
     
     do.call(grid.arrange, c(list(p, hist, pruned.p, pruned.hist), ncol=2))
