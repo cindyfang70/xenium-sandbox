@@ -24,14 +24,19 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly=TRUE)
 source(here("code","cindy","04_delaunay","delaunay.R"))
 sfe <- readRDS(args[[1]])
-tri <- readRDS(args[[2]])
+tris <- readRDS(args[[2]])
 
 #sfe <- readRDS("code/05_segmentRegions/Br2743_Mid_SFE_filt.RDS")
 #tris <- readRDS("code/05_segmentRegions/Br2743_Mid_5548-delaunay-lou25.RDS")
 #source(here("code","04_delaunay","delaunay.R"))
 
+# compute the coordinates for the scale bar
+x_min <- min(spatialCoords(sfe)[,1])
+y_min <- min(spatialCoords(sfe)[,2])
+scale.df <- data.frame(x=x_min + 100, xend=x_min + 600,
+                       y=y_min+100, yend=y_min+100, text="500um")
 plist <- list()
-for (i in 1:length(tri)){
+for (i in 1:length(tris)){
     tri <- tris[[i]]
     g <- igraph::graph.edgelist(arcs(tri)) # build igraph
     
@@ -58,9 +63,10 @@ for (i in 1:length(tri)){
     
     seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
     
+    
+    sfe <- logNormCounts(sfe)
 
-
-    p <- plotGeometry(sfe, type="cellSeg")+
+    p <- plotSpatialFeature(sfe, "MOBP")+
         geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
         geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
         geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))
@@ -69,7 +75,7 @@ for (i in 1:length(tri)){
 
 }
 
-fname <- paste(sfe$region_id[[1]], clusterName, "alphashape", sep="-")
+fname <- paste(sfe$region_id[[1]], "alphashape", sep="-")
 pdfname <- paste0(fname, ".pdf")
 
 pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
