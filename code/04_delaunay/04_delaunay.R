@@ -47,15 +47,17 @@ fname <- paste(sfe$region_id[[1]], "delaunay", clusterName, sep="-")
 pdfname <- paste0(fname, ".pdf")
 
 pdf(here("plots", "cindy", "04_delaunay", pdfname))
+
 plotSpatialFeature(sfe, clusterName, colGeometryName="cellSeg")
-plotEdgeLengthViolin(tris)
 #print(length(tris))
+tris.withLengths <- list()
 globalPrunedTris <- list()
 for (j in 1:length(tris)){
     tri <- tris[[j]]
     print(summary(tri))
     # compute the length of the edges
     tri <- getEdgesSpatialDistance(tri)
+    tris.withLengths <- list.append(tris.withLengths, tri)
     
     longInds <- c()
     for (i in 1:tri$n){
@@ -71,14 +73,14 @@ for (j in 1:length(tris)){
     # plot the pruned tri
     globalPrunedtri <- tri
     globalPrunedtri$arcs <- globalPrunedtri$arcs[-longInds,]
-    pruned.p <- plotDelaunay(globalPrunedtri, sfe, clustName=sprintf("Lou%s", i))
+    pruned.p <- plotDelaunay(globalPrunedtri, sfe)
     pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (pruned)")
     
     do.call(grid.arrange, c(list(p, hist, pruned.p, pruned.hist), ncol=2))
     globalPrunedTris <- list.append(globalPrunedTris, globalPrunedtri)
 
 }
-    
+plotEdgeLengthViolin(tris.withLengths)    
 dev.off()
 saveRDS(globalPrunedTris, here("processed-data", "cindy", "04_delaunay", paste0(fname, ".RDS")))
 

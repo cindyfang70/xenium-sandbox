@@ -43,7 +43,7 @@ delaunay <- function(sfe, cluster, seed){
     
 }
 
-plotDelaunay <- function(tri, sfe, clustName){
+plotDelaunay <- function(tri, sfe){
     # make the data frame for the line segments of the triangulation
     from.x <- tri$x[tri$arcs$from]
     from.y <- tri$y[tri$arcs$from]
@@ -64,7 +64,7 @@ plotDelaunay <- function(tri, sfe, clustName){
         geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
         geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
         geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))+
-        ggtitle(clustName)
+        ggtitle(tri$arcs$clust[[1]])
     
     return(p)
 }
@@ -165,10 +165,15 @@ plotEdgeLengthViolin <- function(tris){
     for (i in 1:length(tris)){
         tri <- tris[[i]]
         edges <- tri$arcs
+        head(edges)
         allEdges <- list.append(allEdges, edges)
     }
     
     allEdges <- do.call(rbind, allEdges)
+    print(head(allEdges))
+    
+    # make the cluster label a factor so they don't get rearranged
+    allEdges$clust <- factor(allEdges$clust, levels=allEdges$clust)
     
     p <- ggplot(allEdges, aes(x=clust, y=edge.lengths))+
         geom_violin()
