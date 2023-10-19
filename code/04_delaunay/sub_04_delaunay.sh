@@ -11,4 +11,4 @@ sample=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $3}' $c
 
 module load conda_R/4.3.x
 
-Rscript code/cindy/04_delaunay/04_delaunay.R processed-data/cindy/${slide}/${sample}_SFE_filt.RDS lou25
+Rscript code/cindy/04_delaunay/04_delaunay.R processed-data/cindy/slide-${slide}/${sample}_SFE_filt.RDS lou25
