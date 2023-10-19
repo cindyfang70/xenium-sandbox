@@ -36,11 +36,14 @@ delaunay <- function(sfe, cluster, seed){
     # save the arcs as a data frame for easier usage later 
     tri$arcs <- as.data.frame(tri$arcs)
     rownames(tri$arcs) <- paste(tri$arcs$from, tri$arcs$to, sep="-")
+    
+    # save the cluster that the triangulation is for in the edges df
+    tri$arcs$clust <- cluster
     return(tri)
     
 }
 
-plotDelaunay <- function(tri, sfe){
+plotDelaunay <- function(tri, sfe, clustName){
     # make the data frame for the line segments of the triangulation
     from.x <- tri$x[tri$arcs$from]
     from.y <- tri$y[tri$arcs$from]
@@ -60,7 +63,8 @@ plotDelaunay <- function(tri, sfe){
     p <- plotGeometry(sfe, type="cellSeg")+
         geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
         geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
-        geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))
+        geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))+
+        ggtitle(clustName)
     
     return(p)
 }
@@ -151,6 +155,23 @@ plotEdgeLengthHistogram <- function(tri, title="Edge lengths"){
     p <- ggplot(edges, aes(x=edge.lengths))+
         geom_density()+
         ggtitle(title)
+    
+    return(p)
+}
+
+plotEdgeLengthViolin <- function(tris){
+    # take in a list of triangulation objects
+    allEdges <- list()
+    for (i in 1:length(tris)){
+        tri <- tris[[i]]
+        edges <- tri$arcs
+        allEdges <- list.append(allEdges, edges)
+    }
+    
+    allEdges <- do.call(rbind, allEdges)
+    
+    p <- ggplot(allEdges, aes(x=clust, y=edge.lengths))+
+        geom_violin()
     
     return(p)
 }
