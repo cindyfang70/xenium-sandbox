@@ -43,7 +43,7 @@ delaunay <- function(sfe, cluster, seed){
     
 }
 
-plotDelaunay <- function(tri, sfe){
+plotDelaunay <- function(tri, sfef){
     # make the data frame for the line segments of the triangulation
     from.x <- tri$x[tri$arcs$from]
     from.y <- tri$y[tri$arcs$from]
@@ -159,7 +159,7 @@ plotEdgeLengthHistogram <- function(tri, title="Edge lengths"){
     return(p)
 }
 
-plotEdgeLengthViolin <- function(tris){
+plotEdgeLengthViolin <- function(tris, removeLong=TRUE){
     # take in a list of triangulation objects
     allEdges <- list()
     for (i in 1:length(tris)){
@@ -172,8 +172,15 @@ plotEdgeLengthViolin <- function(tris){
     allEdges <- do.call(rbind, allEdges)
     print(head(allEdges))
     
+    if (removeLong){
+        allEdges <- allEdges %>%
+            as.data.frame() %>%
+            filter(edge.lengths<=1000)
+    }
+    
     # make the cluster label a factor so they don't get rearranged
-    allEdges$clust <- factor(allEdges$clust, levels=allEdges$clust)
+    allEdges$clust <- factor(allEdges$clust, 
+                             sfelevels=unique(allEdges$clust))
     
     p <- ggplot(allEdges, aes(x=clust, y=edge.lengths))+
         geom_violin()
