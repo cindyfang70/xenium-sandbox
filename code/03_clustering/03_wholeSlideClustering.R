@@ -24,8 +24,11 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly=TRUE)
 
 k <- args[[length(args)]] 
-args <- args[-length(args)]
-print(args)
+
+config <- read.table(args[[1]], header=TRUE)
+region_id <- config$Slide[[1]]
+
+sfeNames <- paste0(here("processed-data", "cindy", sprintf("slide-%s/", region_id)), config$SampleName, "_SFE_filt.RDS")
 
 sfes <- lapply(args, readRDS)
 sfe <- do.call(cbind, sfes)
@@ -49,11 +52,9 @@ lou <- igraph::cluster_louvain(g)
 clusterName <- paste0("louWholeSlide",numNeighbours)
 colData(sfe)[[clusterName]] <- paste0("LouWholeSlide", lou$membership)
 
-region_id <- unique(sfe$region_id)
-slide <- unlist(strsplit(region_id, split="_"))[[3]]
 
-sfeName <- paste0("slide", region_id, "-clustSFE.RDS")
 
-saveRDS(sfe, here("processed-data", "cindy", paste0("slide-", slide), sfeName))
+clustSfeName <- paste0("slide", region_id, "-clustSFE.RDS")
+saveRDS(sfe, here("processed-data", "cindy", paste0("slide-", slide), clustSfeName))
 
 
