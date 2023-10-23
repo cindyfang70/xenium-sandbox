@@ -195,3 +195,22 @@ get_neg_ctrl_outliers <- function(col, spe) {
     colData(spe)[[new_colname]] <- colnames(spe) %in% outliers
     return(spe)
 }
+
+filterCells <- function(sfe){
+    cols_use <- names(colData(sfe))[str_detect(
+        names(colData(sfe)), "_percent$")]
+    cols_use <- cols_use[!grepl("anti", cols_use)]
+    
+    for (n in cols_use) {
+        sfe <- get_neg_ctrl_outliers(n, sfe)
+    }
+    inds_keep <- sfe$nucleus_area <=200 & !sfe$is_blank_outlier &
+        !sfe$is_depr_outlier &!sfe$is_negProbe_outlier &
+        !sfe$is_negCodeword_outlier & sfe$nCounts > 0
+    
+    sfe <- sfe[,inds_keep]
+    
+    # remove the negative controls
+    sfe <- sfe[which(rowData(sfe)$Type=="Gene Expression"), ]
+    return(sfe)
+}
