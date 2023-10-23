@@ -87,8 +87,12 @@ saveRDS(sfe, here("processed-data", "cindy", paste0("slide-", region_id), clustS
 for (i in 1:length(sub.sfes)){
     sub.sfe <- sub.sfes[[i]]
     whole.subset <- sfe[,which(sfe$cell_id %in% sub.sfe$cell_id)]
-    print(any(!(whole.subset$cell_id == sub.sfe$cell_id)))
-    colData(sub.sfe)[[clusterName]] <- colData(whole.subset)[[clusterName]]
+    if (dim(sub.sfe)[[2]] > dim(whole.subset)[[2]]){
+        sub.sfe <- sub.sfe[,which(sub.sfe$cell_id %in% whole.subset$cell_id)]
+        colData(sub.sfe)[[clusterName]] <- colData(whole.subset)[[clusterName]]
+    } else{
+        colData(sub.sfe)[[clusterName]] <- colData(whole.subset)[[clusterName]]
+    }
     
     saveRDS(sub.sfe, sub.sfes.paths[[i]])
 }
