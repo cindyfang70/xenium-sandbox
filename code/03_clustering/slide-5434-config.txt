@@ -1,0 +1,4 @@
+Slide             SampleName
+5434              Br6471_Post
+5434              Br6522_Post
+5434              Br8667_Mid
