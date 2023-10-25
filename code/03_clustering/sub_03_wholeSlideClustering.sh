@@ -2,6 +2,7 @@
 #SBATCH --job-name=CLUST_ALL
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
+#SBATCH --array=1-2
 
 config=code/cindy/03_clustering/03_wholeSlideClustering_config.txt
 
