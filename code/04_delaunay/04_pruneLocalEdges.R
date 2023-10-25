@@ -58,4 +58,7 @@ computePathLength <- function(tri, path){
     return(total.length)
 }
 
-computePathLength(tri, paths[[26]])
+path.edge.lengths <- sum(unlist(lapply(paths, computePathLength, tri=tri)))
+paths.num.edges <- sum(unlist(lapply(paths, length)))
+
+order_two_mean <- path.edge.lengths/paths.num.edges
