@@ -61,4 +61,26 @@ computePathLength <- function(tri, path){
 path.edge.lengths <- sum(unlist(lapply(paths, computePathLength, tri=tri)))
 paths.num.edges <- sum(unlist(lapply(paths, length)))
 
-order_two_mean <- path.edge.lengths/paths.num.edges
+two_order_mean <- path.edge.lengths/paths.num.edges
+
+# Mean_Variation(Pi) is the mean value of all Local_Variation(Qi) for 
+# Qi belonging to a path of two or fewer edges starting at Pi.
+
+# find the nodes belonging to a path of two or fewer edges starting at v
+two.order.neighbours <- unlist(paths)
+two.order.neighbours <- unique(two.order.neighbours[two.order.neighbours!=v])
+
+# Local_Variation(Qi) be the standard deviation of the length of the edges 
+# directly incident to Qi.
+computeLocalVariation <- function(tri, vertex){
+    edges <- tri$arcs
+    # find the neighbours of the given vertex
+    nn <- rbind(edges[which(edges$from ==vertex),],
+                edges[which(edges$to ==vertex),])
+    #print(nn)
+    
+    # compute the mean of neighbouring edge lengths
+    local_variation <- sd(nn$edge.lengths)
+    return(local_variation)
+}
+
