@@ -180,7 +180,7 @@ plotEdgeLengthViolin <- function(tris, removeLong=TRUE){
     
     # make the cluster label a factor so they don't get rearranged
     allEdges$clust <- factor(allEdges$clust, 
-                             sfelevels=unique(allEdges$clust))
+                             levels=unique(allEdges$clust))
     
     p <- ggplot(allEdges, aes(x=clust, y=edge.lengths))+
         geom_violin()
