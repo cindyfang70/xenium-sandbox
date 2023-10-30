@@ -27,9 +27,11 @@ source(here("code","cindy","04_delaunay","delaunay.R"))
 sfe <- readRDS(args[[1]])
 tris <- readRDS(args[[2]])
 
-# sfe <- readRDS("Br2743_Mid_SFE_filt.RDS")
-# tris <- readRDS("Br2743_Mid_5548-delaunay-lou25.RDS")
-# source(here("code","04_delaunay","delaunay.R"))
+sfe <- readRDS("Br2743_Mid_SFE_filt.RDS")
+tris <- readRDS("Br2743_Mid_5548-delaunay-lou25localPruned.RDS")
+source(here("code","04_delaunay","delaunay.R"))
+
+sfe <- logNormCounts(sfe)
 
 # compute the coordinates for the scale bar
 x_min <- min(spatialCoords(sfe)[,1])
@@ -37,24 +39,64 @@ y_min <- min(spatialCoords(sfe)[,2])
 scale.df <- data.frame(x=x_min + 100, xend=x_min + 600,
                        y=y_min+100, yend=y_min+100, text="500um")
 plist <- list()
+segs <- list()
 alpha.shapes <- list()
+ncells <- dim(sfe)[[2]]
+
 for (i in 1:length(tris)){
     tri <- tris[[i]]
     clustName <- unique(tri$arcs$clust) # get the name of the cluster
     g <- igraph::graph.edgelist(arcs(tri)) # build igraph
     
     # find biggest component
-    comp <- components(g) # components() takes a graph as input, not adjacency matrix
-    max.inds <- which.max(comp$csize)
-    max.comp.vertices <- igraph::groups(comp)[[max.inds]]
+    comps <- components(g) # components() takes a graph as input, not adjacency matrix
     
-    # compute the alpha shape using the maximal component
-    comp.x <- tri$x[max.comp.vertices]
-    comp.y <- tri$y[max.comp.vertices]
+    # find the components that we want to compute alpha shape with, for now it's
+    # those that contain more than 10% of all cells and less than 50% of all cells
+    alpha.comps <- which(comps$csize > ncells*0.01 & comps$csize < ncells*0.5)
     
-    alpha.shape <- ashape(comp.x, comp.y, alpha=100)
-    alpha.shape$delvor.obj$tri.obj$arcs <- as.data.frame(
-        arcs(alpha.shape$delvor.obj$tri.obj))
+    clust.alpha.shapes <- list()
+    clust.seg.dfs <- list()
+    if (length(alpha.comps > 0)){
+        for (j in 1:length(alpha.comps)){
+            print(j)
+            # get the coordinates of the vertices in the jth component
+            comp.vertices <- igraph::groups(comps)[[alpha.comps[[j]]]]
+            comp.x <- tri$x[comp.vertices]
+            comp.y <- tri$y[comp.vertices]
+            
+            # compute the alpha shape for the jth component
+            alpha.shape <- ashape(comp.x, comp.y, alpha=100)
+            alpha.shape$delvor.obj$tri.obj$arcs <- as.data.frame(
+                arcs(alpha.shape$delvor.obj$tri.obj))
+            clust.alpha.shapes <- list.append(clust.alpha.shapes, alpha.shape)
+            
+            alpha.edges <- as.data.frame(alpha.shape$edges)
+            from.x <- alpha.edges$x1
+            from.y <- alpha.edges$y1
+            
+            to.x <- alpha.edges$x2
+            to.y <- alpha.edges$y2
+            
+            seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
+            seg.df$component <- paste0("comp", j)
+            clust.seg.dfs <- list.append(clust.seg.dfs, seg.df)
+        }
+        seg.df <- as.data.frame(do.call(rbind, clust.seg.dfs))
+        seg.df$clust <- clustName
+        segs <- list.append(segs, seg.df)
+        
+        p <- plotGeometry(sfe, type="cellSeg")+
+            geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y, colour=component))+
+            geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
+            geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))+
+            ggtitle(clustName)
+        plist <- list.append(plist, p)
+        
+    }else{
+        
+    }
+    
     
     # area of the alpha shape
     # ashape <- alpha.shape
@@ -64,31 +106,18 @@ for (i in 1:length(tris)){
     # print(ashape@area)
     
     # plot the alpha shape on the tissue
-    alpha.edges <- as.data.frame(alpha.shape$edges)
-    from.x <- alpha.edges$x1
-    from.y <- alpha.edges$y1
     
-    to.x <- alpha.edges$x2
-    to.y <- alpha.edges$y2
     
-    seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
-    
-    sfe <- logNormCounts(sfe)
 
-    p <- plotSpatialFeature(sfe, "MOBP")+
-        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))+
-        geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
-        geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))+
-        ggtitle(clustName)
-    
     # save the alpha shapes to plot them all on the same tissue
-    seg.df$clust <- clustName
-    alpha.shapes <- list.append(alpha.shapes, seg.df)
-    plist <- list.append(plist, p)
+
+    #alpha.shapes <- list.append(alpha.shapes, alpha.shape)
+    
 
 }
 
 # Identify the alpha shapes that contain less than 90% of all cells
+props <- list()
 for (i in 1:length(alpha.shapes)){
     alpha.shape <- alpha.shapes[[i]]
     coords <- colGeometries(sfe)$centroid
@@ -109,11 +138,13 @@ for (i in 1:length(alpha.shapes)){
     sfe$inside <- FALSE
     sfe$inside[inside_coords] <- TRUE
     
-    print(mean(sfe$inside))
+    props <- list.append(props, mean(sfe$inside))
 }
+# 
 
-all.alpha.shapes <- do.call(rbind, alpha.shapes)
-all.alpha.shapes <- as.data.frame(all.alpha.shapes)
+small.shapes.inds <- which(props <= 0.2)
+all.segs <- do.call(rbind, segs[small.shapes.inds])
+all.segs <- as.data.frame(all.segs)
 
 fname <- paste(sfe$region_id[[1]], "localPruned", "alphashape", sep="-")
 pdfname <- paste0(fname, ".pdf")
@@ -121,7 +152,7 @@ pdfname <- paste0(fname, ".pdf")
 pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
 do.call(gridExtra::grid.arrange, plist)
 plotGeometry(sfe, type="cellSeg")+
-    geom_segment(data=all.alpha.shapes, linewidth=1, aes(x=from.x,xend = to.x, y=from.y,yend = to.y,
+    geom_segment(data=all.segs, linewidth=1, aes(x=from.x,xend = to.x, y=from.y,yend = to.y,
                                             colour=as.factor(clust)))+
     geom_segment(data=scale.df, aes(x=x, xend=xend,y=y,yend=yend))+
     geom_text(data=scale.df, aes(label=text, x=xend, y=yend-300))
