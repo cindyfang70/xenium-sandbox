@@ -27,9 +27,9 @@ source(here("code","cindy","04_delaunay","delaunay.R"))
 sfe <- readRDS(args[[1]])
 tris <- readRDS(args[[2]])
 
-sfe <- readRDS("Br2743_Mid_SFE_filt.RDS")
-tris <- readRDS("Br2743_Mid_5548-delaunay-lou25.RDS")
-source(here("code","04_delaunay","delaunay.R"))
+# sfe <- readRDS("Br2743_Mid_SFE_filt.RDS")
+# tris <- readRDS("Br2743_Mid_5548-delaunay-lou25.RDS")
+# source(here("code","04_delaunay","delaunay.R"))
 
 # compute the coordinates for the scale bar
 x_min <- min(spatialCoords(sfe)[,1])
@@ -40,8 +40,7 @@ plist <- list()
 alpha.shapes <- list()
 for (i in 1:length(tris)){
     tri <- tris[[i]]
-    #clustName <- unique(tri$arcs$clust) # get the name of the cluster
-    clustName <- sprintf("clust%s", i)
+    clustName <- unique(tri$arcs$clust) # get the name of the cluster
     g <- igraph::graph.edgelist(arcs(tri)) # build igraph
     
     # find biggest component
@@ -58,11 +57,11 @@ for (i in 1:length(tris)){
         arcs(alpha.shape$delvor.obj$tri.obj))
     
     # area of the alpha shape
-    ashape <- alpha.shape
-    bds <-ashape$x[alpha.shape$alpha.extremes,]   # matrix of coordinates in ashapebds <- 
-    bds <- rbind(bds, bds[1,])          # close the ring
-    ashape <- Polygon(bds)   
-    print(ashape@area)
+    # ashape <- alpha.shape
+    # bds <-ashape$x[alpha.shape$alpha.extremes,]   # matrix of coordinates in ashapebds <- 
+    # bds <- rbind(bds, bds[1,])          # close the ring
+    # ashape <- Polygon(bds)   
+    # print(ashape@area)
     
     # plot the alpha shape on the tissue
     alpha.edges <- as.data.frame(alpha.shape$edges)
@@ -74,7 +73,6 @@ for (i in 1:length(tris)){
     
     seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
     
-    
     sfe <- logNormCounts(sfe)
 
     p <- plotSpatialFeature(sfe, "MOBP")+
@@ -84,16 +82,40 @@ for (i in 1:length(tris)){
         ggtitle(clustName)
     
     # save the alpha shapes to plot them all on the same tissue
-    seg.df$clust <- clustName # need to change this later to reflect variable cluster names
+    seg.df$clust <- clustName
     alpha.shapes <- list.append(alpha.shapes, seg.df)
     plist <- list.append(plist, p)
 
 }
 
-all.alpha.shapes <- do.call(rbind, alpha.shapes[c(2,4,6,12)])
+# Identify the alpha shapes that contain less than 90% of all cells
+for (i in 1:length(alpha.shapes)){
+    alpha.shape <- alpha.shapes[[i]]
+    coords <- colGeometries(sfe)$centroid
+
+    a <- data.frame(alpha.shape$edges)[,c( 'x1', 'y1', 'x2', 'y2')]
+    l <- st_linestring(matrix(as.numeric(a[1,]), ncol=2, byrow = T))
+    for(j in 2:nrow(a)){
+        l <- c(l, st_linestring(matrix(as.numeric(a[j,]), ncol=2, byrow = T)))
+    }
+    alphapoly <- st_sf(geom = st_sfc(l)) %>% 
+        st_polygonize() %>% 
+        st_collection_extract()
+
+    int <- st_intersects(alphapoly, coords)
+
+    inside_coords <- unlist(int)
+    inside_coords <- unique(inside_coords)
+    sfe$inside <- FALSE
+    sfe$inside[inside_coords] <- TRUE
+    
+    print(mean(sfe$inside))
+}
+
+all.alpha.shapes <- do.call(rbind, alpha.shapes)
 all.alpha.shapes <- as.data.frame(all.alpha.shapes)
 
-fname <- paste(sfe$region_id[[1]], "alphashape", sep="-")
+fname <- paste(sfe$region_id[[1]], "localPruned", "alphashape", sep="-")
 pdfname <- paste0(fname, ".pdf")
 
 pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
@@ -106,9 +128,22 @@ plotGeometry(sfe, type="cellSeg")+
 dev.off()
 
 # see if the coords are in the shape
-coords <- colGeometries(sfe)$centroid
-bds <- st_as_sf(as.data.frame(bds), coords=c("V1", "V2") )
-sf::st_intersects(coords, st_as_sf(Polygon(ashape)))
-
-sp::over(coords, ashape)
-sf::st_intersection(coords, st_as_sf(ashape))
+# coords <- colGeometries(sfe)$centroid
+# bds_sf <- st_as_sf(as.data.frame(bds), coords=c("V1", "V2") )
+# 
+# a <- data.frame(alpha.shape$edges)[,c( 'x1', 'y1', 'x2', 'y2')]
+# l <- st_linestring(matrix(as.numeric(a[1,]), ncol=2, byrow = T))
+# for(i in 2:nrow(a)){
+#     l <- c(l, st_linestring(matrix(as.numeric(a[i,]), ncol=2, byrow = T)))
+# }
+# alphapoly <- st_sf(geom = st_sfc(l)) %>% st_polygonize() %>% st_collection_extract()
+# 
+# int <- sf::st_intersects(alphapoly, coords)
+# 
+# inside_coords <- unlist(int)
+# inside_coords <- unique(inside_coords)
+# sfe$inside <- FALSE
+# sfe$inside[inside_coords] <- TRUE
+# 
+# plotSpatialFeature(sfe, "inside")+
+#     geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))
