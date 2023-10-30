@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=DELAUNAY
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --array=1-6
 
 config=code/cindy/03_clustering/03_clustering_config.txt
@@ -11,4 +11,4 @@ sample=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $3}' $c
 
 module load conda_R/4.3.x
 
-Rscript code/cindy/04_delaunay/04_delaunay.R processed-data/cindy/slide-${slide}/${sample}_SFE_filt.RDS louWholeSlide25
+Rscript code/cindy/04_delaunay/04_delaunay.R processed-data/cindy/slide-${slide}/${sample}_SFE_filt.RDS lou25

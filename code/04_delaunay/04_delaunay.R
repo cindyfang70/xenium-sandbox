@@ -79,18 +79,20 @@ for (j in 1:length(tris)){
         globalLong <- identifyLongEdges(tri, i, gc)
         longIndsGlobal <- c(longIndsGlobal, globalLong)
         
-        lc <- computeLocalEdgeConstraint(tri, g)
+        lc <- computeLocalEdgeConstraint(tri, g, i)
         localLong <- identifyLongEdges(tri, i, lc)
         longIndsLocal <- c(longIndsLocal, localLong)
         
     }
     # plot the unpruned triangulation
     p <- plotDelaunay(tri, sfe)
+    print(head(tri$arcs))
     hist <- plotEdgeLengthHistogram(tri)
     
     # plot the pruned tri
     globalPrunedtri <- tri
     globalPrunedtri$arcs <- globalPrunedtri$arcs[-longIndsGlobal,]
+    print(head(globalPrunedtri$arcs))
     pruned.p <- plotDelaunay(globalPrunedtri, sfe)
     pruned.hist <- plotEdgeLengthHistogram(globalPrunedtri, title = "Edge lengths (global pruned)")
  
@@ -99,14 +101,17 @@ for (j in 1:length(tris)){
     # prune the local edges and plot
     localPrunedTri <- globalPrunedtri
     localPrunedTri$arcs <- localPrunedTri$arcs[-longIndsLocal,]
+    print(head(localPrunedTri$arcs))
     localPruned.p <- plotDelaunay(localPrunedTri, sfe)
     localPruned.hist <- plotEdgeLengthHistogram(localPrunedTri, title="Edge lengths (local and global pruned)")
     localPrunedTris <- list.append(localPrunedTris, localPrunedTri)
     
     # plot
-    do.call(grid.arrange, c(list(p, pruned.p, localPruned.p, hist, pruned.hist, localPruned.hist), ncol=3))
+    do.call(gridExtra::grid.arrange, c(list(p, pruned.p, localPruned.p, 
+                                                        hist, pruned.hist, localPruned.hist), 
+                                                   ncol=3))
 }
 plotEdgeLengthViolin(tris.withLengths)    
 dev.off()
 saveRDS(globalPrunedTris, here("processed-data", "cindy", "04_delaunay", paste0(fname, ".RDS")))
-
+saveRDS(localPrunedTris, here("processed-data", "cindy", "04_delaunay", paste0(fname, "localPruned", ".RDS")))

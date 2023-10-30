@@ -43,7 +43,7 @@ delaunay <- function(sfe, cluster, seed){
     
 }
 
-plotDelaunay <- function(tri, sfef){
+plotDelaunay <- function(tri, sfe){
     # make the data frame for the line segments of the triangulation
     from.x <- tri$x[tri$arcs$from]
     from.y <- tri$y[tri$arcs$from]
@@ -216,8 +216,8 @@ computePathLength <- function(tri, path){
 computeLocalVariation <- function(tri, vertex){
     edges <- tri$arcs
     # find the neighbours of the given vertex
-    nn <- rbind(edges[which(edges$from ==vertex),],
-                edges[which(edges$to ==vertex),])
+    nn <- rbind(edges[which(edges$from == vertex),],
+                edges[which(edges$to == vertex),])
     
     # compute the mean of neighbouring edge lengths
     local_variation <- sd(nn$edge.lengths)
