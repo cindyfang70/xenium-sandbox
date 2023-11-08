@@ -79,7 +79,7 @@ for (i in 1:length(tris)){
             to.y <- alpha.edges$y2
             
             seg.df <- as.data.frame(cbind(from.x, from.y, to.x,to.y))
-            seg.df$component <- paste0("comp", j)
+            seg.df$component <- paste("clust", i, "comp", j, sep="-")
             clust.seg.dfs <- list.append(clust.seg.dfs, seg.df)
         }
         seg.df <- as.data.frame(do.call(rbind, clust.seg.dfs))
@@ -93,10 +93,8 @@ for (i in 1:length(tris)){
             ggtitle(clustName)
         plist <- list.append(plist, p)
         
-    }else{
-        
     }
-    
+
     
     # area of the alpha shape
     # ashape <- alpha.shape

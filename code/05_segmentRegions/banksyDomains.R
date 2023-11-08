@@ -1,26 +1,17 @@
 suppressPackageStartupMessages({
     library(Voyager)
-    library(patchwork)
     library(SpatialFeatureExperiment)
     library(SpatialExperiment)
     library(ggplot2)
-    library(bluster)
     library(stringr)
     library(BiocSingular)
     #library(scater)
-    library(rjson)
-    library(Matrix)
-    library(vroom)
-    library(sf)
     library(BiocParallel)
     library(dplyr)
     library(here)
-    library(ggforce)
-    library(interp)
-    library(igraph)
-    library(rlist)
     library(gridExtra)
     library(Banksy)
+    library(scuttle)
 })
 #------------------------------------------------------------#
 # Trying out Banksy for spatial domain detection:
@@ -57,7 +48,7 @@ colData(sfe) <- cbind(colData(sfe), spatialCoords(sfe))
 
 p1 <- plotSpatialFeature(sfe, "clust_M1_lam0.9_k50_res1.2", colGeometryName = "cellSeg")
 
-fname <- paste(sfe$region_id[[1]], "Banksy", clusterName, "lambda", 
+fname <- paste(sfe$region_id[[1]], "Banksy", "lambda", 
                lambda[[2]], "res", 1.2, sep="-")
 pdfname <- paste0(fname, ".pdf")
 pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
