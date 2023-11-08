@@ -79,8 +79,10 @@ for (j in 1:length(tris)){
         globalLong <- identifyLongEdges(tri, i, gc)
         longIndsGlobal <- c(longIndsGlobal, globalLong)
         
-        lc <- computeLocalEdgeConstraint(tri, g, i)
+        lc <- computeLocalEdgeConstraint(tri, g, i, beta=2)
+        print(lc)
         localLong <- identifyLongEdges(tri, i, lc)
+        print(localLong)
         longIndsLocal <- c(longIndsLocal, localLong)
         
     }
@@ -101,7 +103,7 @@ for (j in 1:length(tris)){
     # prune the local edges and plot
     localPrunedTri <- globalPrunedtri
     localPrunedTri$arcs <- localPrunedTri$arcs[-longIndsLocal,]
-    print(head(localPrunedTri$arcs))
+    #print(head(localPrunedTri$arcs))
     localPruned.p <- plotDelaunay(localPrunedTri, sfe)
     localPruned.hist <- plotEdgeLengthHistogram(localPrunedTri, title="Edge lengths (local and global pruned)")
     localPrunedTris <- list.append(localPrunedTris, localPrunedTri)

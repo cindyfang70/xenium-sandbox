@@ -89,5 +89,5 @@ adjs <- lapply(tris, getAdj)
 slide_number <- "5434"
 for (i in 1:length(adjs)){
     slide_directory <- here("data", paste0("slide-", slide_number, "/"))
-    writeMM(adjs[[i]], file=paste0(slide_directory, unique(sfes[[i]]$region_id), "globalPrunedTriAdj.csv"))
+    writeMM(adjs[[i]], file=paste0(slide_directory, unique(sfes[[i]]$region_id), "globalPrunedTriAdj.mtx"))
 }
