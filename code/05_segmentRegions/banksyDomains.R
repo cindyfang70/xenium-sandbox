@@ -26,14 +26,18 @@ suppressPackageStartupMessages({
 # Trying out Banksy for spatial domain detection:
 # tutorial: https://github.com/prabhakarlab/Banksy/tree/bioc
 #------------------------------------------------------------#
-sfe <- readRDS("data/slide-5434/Br8667_Mid_SFE_filt.RDS")
+args <- commandArgs(trailingOnly = TRUE)
+print(args[[1]])
+sfe <- readRDS(args[[1]])
+
+#sfe <- readRDS("data/slide-5434/Br6522_Post_SFE_filt.RDS")
 sfe <- computeLibraryFactors(sfe)
 aname <- "normcounts"
 assay(sfe, aname) <- normalizeCounts(sfe, log = FALSE)
 
 
 # Compute neighbourhood matrices
-lambda <- c(0, 0.2)
+lambda <- c(0, 0.9)
 k_geom <- c(15, 30)
 
 sfe <- Banksy::computeBanksy(sfe, assay_name = aname, compute_agf = TRUE, k_geom = k_geom)
@@ -51,6 +55,12 @@ cnames <- colnames(colData(sfe))
 cnames <- cnames[grep("^clust", cnames)]
 colData(sfe) <- cbind(colData(sfe), spatialCoords(sfe))
 
-plotSpatialFeature(sfe, "clust_M1_lam0.2_k50_res1.2", colGeometryName = "cellSeg")
+p1 <- plotSpatialFeature(sfe, "clust_M1_lam0.9_k50_res1.2", colGeometryName = "cellSeg")
 
+fname <- paste(sfe$region_id[[1]], "Banksy", clusterName, "lambda", 
+               lambda[[2]], "res", 1.2, sep="-")
+pdfname <- paste0(fname, ".pdf")
+pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
+p1
+dev.off()
 
