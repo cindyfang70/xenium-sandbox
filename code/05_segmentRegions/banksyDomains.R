@@ -22,8 +22,8 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly = TRUE)
 print(args[[1]])
 sfe <- readRDS(args[[1]])
+colData(sfe) <- colData(sfe)[!grepl("^clust", colnames(colData(sfe)))]
 
-#sfe <- readRDS("data/slide-5434/Br6522_Post_SFE_filt.RDS")
 sfe <- computeLibraryFactors(sfe)
 aname <- "normcounts"
 assay(sfe, aname) <- normalizeCounts(sfe, log = FALSE)
@@ -43,14 +43,18 @@ sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda, resolution = 
 # connect the clusters as suggested in the tutorial
 sfe <- Banksy::connectClusters(sfe)
 
+saveRDS(sfe, args[[1]])
 
-cnames <- colnames(colData(sfe))
-cnames <- cnames[grep("^clust", cnames)]
-colData(sfe) <- cbind(colData(sfe), spatialCoords(sfe))
+
+# plot using escheR 
+print(head(colData(sfe)["clust_M1_lam0.9_k50_res1.2"]))
+colourCount = nlevels(colData(sfe)[["clust_M1_lam0.9_k50_res1.2"]])
+print(colourCount)
+getPalette = colorRampPalette(brewer.pal(12, "Set3"))
 
 p1 <- make_escheR(sfe) %>%
-    add_fill("clust_M1_lam0.9_k50_res1.2") +
-    scale_fill_brewer("Set3")
+    add_fill(var="clust_M1_lam0.9_k50_res1.2")+
+    scale_fill_manual(values=getPalette(colourCount))
     
 
 #p1 <- plotSpatialFeature(sfe, "clust_M1_lam0.9_k50_res1.2", colGeometryName = "cellSeg")
