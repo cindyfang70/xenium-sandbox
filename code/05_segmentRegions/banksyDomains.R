@@ -12,6 +12,8 @@ suppressPackageStartupMessages({
     library(gridExtra)
     library(Banksy)
     library(scuttle)
+    library(escheR)
+    library(RColorBrewer)
 })
 #------------------------------------------------------------#
 # Trying out Banksy for spatial domain detection:
@@ -46,7 +48,12 @@ cnames <- colnames(colData(sfe))
 cnames <- cnames[grep("^clust", cnames)]
 colData(sfe) <- cbind(colData(sfe), spatialCoords(sfe))
 
-p1 <- plotSpatialFeature(sfe, "clust_M1_lam0.9_k50_res1.2", colGeometryName = "cellSeg")
+p1 <- make_escheR(sfe) %>%
+    add_fill("clust_M1_lam0.9_k50_res1.2") +
+    scale_fill_brewer("Set3")
+    
+
+#p1 <- plotSpatialFeature(sfe, "clust_M1_lam0.9_k50_res1.2", colGeometryName = "cellSeg")
 
 fname <- paste(sfe$region_id[[1]], "Banksy", "lambda", 
                lambda[[2]], "res", 1.2, sep="-")
