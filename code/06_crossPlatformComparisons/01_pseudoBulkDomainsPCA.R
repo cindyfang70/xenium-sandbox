@@ -44,4 +44,42 @@ sfe.summed <- SFEtoSPE(sfe.summed)
 spe.summed <- spe.summed[which(rowData(spe.summed)$gene_name %in% rownames(sfe.summed)),]
 # remove the imgData
 imgData(spe.summed) <- NULL
+
+# Now subset the colData for both to have the same
+colData(sfe.summed) <- colData(sfe.summed)[c("sample_id", "clust_M1_lam0.9_k50_res1.2")]
+colData(spe.summed) <- colData(spe.summed)[c("sample_id", "clust_M1_lam0.9_k50_res1.2")]
+
+# rename the spatial coordinates to be the same 
+col <- spatialCoords(spe.summed)[,1]
+row <- spatialCoords(spe.summed)[,2]
+spatialCoords(spe.summed) <- cbind(row=row, col=col)
+
+col_xen <- spatialCoords(sfe.summed)[,2]
+row_xen <- spatialCoords(sfe.summed)[,1]
+spatialCoords(sfe.summed) <- cbind(row=row_xen, col=col_xen)
+
+metadata(spe.summed) <- NULL
 spe.all <- cbind(sfe.summed, spe.summed)
+
+# create new objects to remove unnecessary information from the individual SPEs
+new.spe <- SpatialExperiment(assay=list(counts=counts(spe.summed)), 
+                                    spatialCoords=spatialCoords(spe.summed))
+colData(new.spe) <- colData(spe.summed)
+
+new.sfe <- SpatialExperiment(assays=list(counts=counts(sfe.summed)),
+                             spatialCoords=spatialCoords(sfe.summed))
+colData(new.sfe) <- colData(sfe.summed)
+
+# add modality to the colData
+new.sfe$platform <- "Xenium"
+new.spe$platform <- "Visium"
+
+spes.all <- cbind(new.sfe, new.spe)
+
+spes.all <- scry::nullResiduals(spes.all, assay="counts", fam="poisson", type="pearson")
+spes.all <- scater::runPCA(spes.all, ncomponents=10, 
+                      ntop = 1000,
+                      exprs_values = "poisson_pearson_residuals",
+                      scale = TRUE, name = "GLM-PCA",
+                      BSPARAM = BiocSingular::RandomParam())
+plotReducedDim(spes.all,ncomponents=4, colour_by="platform", dimred="GLM-PCA")
