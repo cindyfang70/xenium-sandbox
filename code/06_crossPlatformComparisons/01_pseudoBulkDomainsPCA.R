@@ -74,12 +74,11 @@ colData(new.sfe) <- colData(sfe.summed)
 new.sfe$platform <- "Xenium"
 new.spe$platform <- "Visium"
 
+new.sfe$clust <- paste0(new.sfe$platform, new.sfe$clust_M1_lam0.9_k50_res1.2)
+new.spe$clust <- paste0(new.spe$platform, new.spe$clust_M1_lam0.9_k50_res1.2)
 spes.all <- cbind(new.sfe, new.spe)
 
-spes.all <- scry::nullResiduals(spes.all, assay="counts", fam="poisson", type="pearson")
-spes.all <- scater::runPCA(spes.all, ncomponents=10, 
-                      ntop = 1000,
-                      exprs_values = "poisson_pearson_residuals",
-                      scale = TRUE, name = "GLM-PCA",
-                      BSPARAM = BiocSingular::RandomParam())
-plotReducedDim(spes.all,ncomponents=4, colour_by="platform", dimred="GLM-PCA")
+
+mat <- counts(spes.all)
+colnames(mat) <- spes.all$clust
+ComplexHeatmap::Heatmap(cor(mat)
