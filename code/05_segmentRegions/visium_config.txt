@@ -1,0 +1,7 @@
+ArrayTaskID     SampleName
+1               Br6471_Post
+2               Br6522_Post
+3               Br8667_Mid
+4               Br2743_Mid
+
+     
