@@ -47,13 +47,16 @@ print(below_threshold_genes)
 
 plist=list()
 for (i in 1:nrow(below_threshold_genes_annot)){
-    p <- plotSpatialFeature(sfe, below_threshold_genes_annot[[i,1]], colGeometryName = "cellSeg",
-                       exprs_values="counts")+
-        ggtitle(paste(below_threshold_genes_annot[i,1], below_threshold_genes_annot[i,3], sep="-"))
+    gene <- below_threshold_genes_annot[[i,1]]
+    sfe$counts <- counts(sfe)[which(rownames(sfe)==gene),]
+    p <- make_escheR(sfe, y_reverse=FALSE)|>
+        add_fill(var="counts")+
+        scale_fill_continuous()+
+        ggtitle(paste(gene, below_threshold_genes_annot[i,3], sep="-"))
     plist[[i]] <- p
 }
 
 pdfname <- paste0(sfe$region_id[[1]], "-belowThresholdGenes.pdf")
 pdf(here("plots", "cindy", "02_qualityControl", pdfname), height=25, width=20)
-do.call(gridExtra::grid.arrange, c(plist, ncol=2))
+do.call(gridExtra::grid.arrange, c(plist, ncol=3))
 dev.off()
