@@ -49,6 +49,6 @@ for (i in 1:nrow(below_threshold_genes_annot)){
 }
 
 pdfname <- paste0(sfe$region_id[[1]], "-belowThresholdGenes.pdf")
-pdf(here("plots", "cindy", "02_qualityControl", pdfname))
-do.call(gridExtra::grid.arrange, c(plist, ncol=4))
+pdf(here("plots", "cindy", "02_qualityControl", pdfname), height=25, width=20)
+do.call(gridExtra::grid.arrange, c(plist, ncol=2))
 dev.off()
