@@ -38,12 +38,12 @@ below_threshold_genes_inds <- which(rowData(sfe)$means < negProbe_threshold & !r
 below_threshold_genes <- rownames(sfe)[below_threshold_genes_inds]
 below_threshold_genes_annot <- genelist[which(genelist$Gene %in% below_threshold_genes),]
 
-print(below_threshold_gene)
+print(below_threshold_genes)
 
 plist=list()
 for (i in 1:nrow(below_threshold_genes_annot)){
     p <- plotSpatialFeature(sfe, below_threshold_genes_annot[[i,1]], colGeometryName = "cellSeg",
-                       exprs_values="counts", scattermore=TRUE)+
+                       exprs_values="counts")+
         ggtitle(paste(below_threshold_genes_annot[i,1], below_threshold_genes_annot[i,3], sep="-"))
     plist[[i]] <- p
 }
