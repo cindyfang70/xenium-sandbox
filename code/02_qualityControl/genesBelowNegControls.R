@@ -29,6 +29,11 @@ genelist <- readxl::read_excel(here("processed-data","XeniumHumanBrainPanelGeneL
 # for each gene, compute the average counts per cell and compare it to the 
 # average counts per cell for the negative control probe counts
 
+# recompute rowwise stats
+rowData(sfe)$means <- rowMeans(counts(sfe))
+rowData(sfe)$vars <- rowVars(counts(sfe))
+rowData(sfe)$cv2 <- rowData(sfe)$vars/rowData(sfe)$means^2
+
 negProbe_means <- rowData(sfe)$means[which(grepl("^NegControlProbe", rownames(rowData(sfe))))]
 print(negProbe_means)
 negProbe_threshold <- max(negProbe_means)
