@@ -4,14 +4,8 @@ suppressPackageStartupMessages({
     library(SpatialExperiment)
     library(ggplot2)
     library(stringr)
-    library(BiocSingular)
-    #library(scater)
-    library(BiocParallel)
     library(dplyr)
     library(here)
-    library(gridExtra)
-    library(Banksy)
-    library(scuttle)
     library(escheR)
     library(RColorBrewer)
 })
@@ -26,12 +20,17 @@ suppressPackageStartupMessages({
 # Do pseudobulked domains cluster together? do they not?
 #------------------------------------------------------------------------------
 
-source(here("code", "01_createSCE", "xenium_helpers.R"))
+source(here("code", "cindy", "01_createSCE", "xenium_helpers.R"))
 # read in data
-sfe <- readRDS(here("processed-data", "cindy", "slide-5434", 
-                    "Br8667_Mid_SFE_filt.RDS"))
+args <- commandArgs(trailingOnly=TRUE)
 
-spe <- readRDS(here("Br8667_mid-visium-SPE.RDS"))
+sfe <- readRDS(args[[1]])
+spe <- readRDS(args[[2]])
+# sfe <- readRDS(here("processed-data", "cindy", "slide-5434", 
+#                     "Br8667_Mid_SFE_filt.RDS"))
+# 
+# spe <- readRDS(here("Br8667_mid-visium-SPE.RDS"))
+
 
 # pseudobulk across the domain labels
 sfe.summed <- aggregateAcrossCells(sfe, id=colData(sfe)[,c("clust_M1_lam0.9_k50_res1.2")])
@@ -42,8 +41,8 @@ sfe.summed <- SFEtoSPE(sfe.summed)
 
 # subset the visium data to the same genes that are in xenium
 spe.summed <- spe.summed[which(rowData(spe.summed)$gene_name %in% rownames(sfe.summed)),]
-# remove the imgData
-imgData(spe.summed) <- NULL
+# # remove the imgData
+# imgData(spe.summed) <- NULL
 
 # Now subset the colData for both to have the same
 colData(sfe.summed) <- colData(sfe.summed)[c("sample_id", "clust_M1_lam0.9_k50_res1.2")]
@@ -57,9 +56,6 @@ spatialCoords(spe.summed) <- cbind(row=row, col=col)
 col_xen <- spatialCoords(sfe.summed)[,2]
 row_xen <- spatialCoords(sfe.summed)[,1]
 spatialCoords(sfe.summed) <- cbind(row=row_xen, col=col_xen)
-
-metadata(spe.summed) <- NULL
-spe.all <- cbind(sfe.summed, spe.summed)
 
 # create new objects to remove unnecessary information from the individual SPEs
 new.spe <- SpatialExperiment(assay=list(counts=counts(spe.summed)), 
@@ -78,7 +74,22 @@ new.sfe$clust <- paste0(new.sfe$platform, new.sfe$clust_M1_lam0.9_k50_res1.2)
 new.spe$clust <- paste0(new.spe$platform, new.spe$clust_M1_lam0.9_k50_res1.2)
 spes.all <- cbind(new.sfe, new.spe)
 
+#spes.all <- logNormCounts(spes.all)
 
 mat <- counts(spes.all)
 colnames(mat) <- spes.all$clust
-ComplexHeatmap::Heatmap(cor(mat)
+
+m <- cor(mat, method="pearson")
+ComplexHeatmap::Heatmap(m)
+
+m <- m[!grepl("Visium", rownames(m)),!grepl("Xenium", colnames(m))]
+
+
+pdfname <- here("plots", "cindy", "06_ss", 
+                paste0(unique(sfe$region_id), 
+                "Visium-Xenium-Correlation-Heatmap.pdf"))
+
+pdf(pdfname)
+ComplexHeatmap::Heatmap(m, name="Pearson Cor")
+dev.off()
+
