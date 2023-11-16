@@ -20,9 +20,12 @@ suppressPackageStartupMessages({
 # tutorial: https://github.com/prabhakarlab/Banksy/tree/bioc
 #------------------------------------------------------------#
 args <- commandArgs(trailingOnly = TRUE)
-lambda <- args[[2]]
+lambda <- as.numeric(args[[2]])
 #k <- args[[3]]
-res <- args[[3]]
+res <- as.numeric(args[[3]])
+
+print(lambda)
+print(res)
 
 # read in the data
 sfe <- readRDS(args[[1]])
@@ -47,9 +50,15 @@ sfe <- Banksy::computeBanksy(sfe, assay_name = aname, compute_agf = TRUE,
 # information
 set.seed(1000)
 sfe <- Banksy::runBanksyPCA(sfe, use_agf = TRUE, lambda = lambda)
+print("PCA done")
 sfe <- Banksy::runBanksyUMAP(sfe, use_agf = TRUE, lambda = lambda)
+print("UMAP done")
+
+# for leiden, higher resolution = more clusters, 
+# lower resolution = fewer clusters
 sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda, 
                              resolution = res)
+print("clustering done")
 
 # save the Banksy results
 sfeName <- str_replace(args[[1]], "\\.RDS", "-with-banksy-domains.RDS")
@@ -63,15 +72,26 @@ clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
 colourCount = nlevels(colData(sfe)[[clustName]])
 getPalette = colorRampPalette(brewer.pal(12, "Set3"))
 
-p1 <- make_escheR(sfe) %>%
+p1 <- make_escheR(sfe, y_reverse=FALSE) %>%
     add_fill(var=clustName)+
     scale_fill_manual(values=getPalette(colourCount))
     
+if (class(sfe)=="SpatialExperiment"){ # save to different location if it's visium
+    fname <- paste(sfe$sample_position[[1]], "visium", "Banksy", "lambda", 
+                   lambda, "res", res, sep="-")
+    pdfname <- paste0(fname, ".pdf")
+    pdf(here("plots", "cindy", "05_segmentRegions", "banksy", "visium", pdfname))
+    p1
+    dev.off()
+} else{
+    fname <- paste(sfe$region_id[[1]], "Banksy", "lambda", 
+                   lambda, "res", res, sep="-")
+    pdfname <- paste0(fname, ".pdf")
+    pdf(here("plots", "cindy", "05_segmentRegions", "banksy", pdfname))
+    p1
+    dev.off()
+}
 
-fname <- paste(sfe$region_id[[1]], "Banksy", "lambda", 
-               lambda, "res", res, sep="-")
-pdfname <- paste0(fname, ".pdf")
-pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
-p1
-dev.off()
+
+
 
