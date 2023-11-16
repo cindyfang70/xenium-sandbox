@@ -30,7 +30,7 @@ print(res)
 # read in the data
 sfe <- readRDS(args[[1]])
 # delete this line after the first run
-colData(sfe) <- colData(sfe)[,!grepl("^clust", colnames(colData(sfe)))]
+#colData(sfe) <- colData(sfe)[,!grepl("^clust", colnames(colData(sfe)))]
 
 
 sfe <- computeLibraryFactors(sfe)
@@ -61,8 +61,7 @@ sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda,
 print("clustering done")
 
 # save the Banksy results
-sfeName <- str_replace(args[[1]], "\\.RDS", "-with-banksy-domains.RDS")
-saveRDS(sfe, sfeName)
+saveRDS(sfe, args[[1]])
 
 # default for the leiden algorithm in clusterBanksy is k_neighbours=50
 clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
@@ -72,23 +71,31 @@ clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
 colourCount = nlevels(colData(sfe)[[clustName]])
 getPalette = colorRampPalette(brewer.pal(12, "Set3"))
 
-p1 <- make_escheR(sfe, y_reverse=FALSE) %>%
-    add_fill(var=clustName)+
-    scale_fill_manual(values=getPalette(colourCount))
+
     
 if (class(sfe)=="SpatialExperiment"){ # save to different location if it's visium
-    fname <- paste(sfe$sample_position[[1]], "visium", "Banksy", "lambda", 
+    
+    p1 <- make_escheR(sfe, y_reverse=TRUE) %>%
+        add_fill(var=clustName)+
+        scale_fill_manual(values=getPalette(colourCount))
+    
+    fname <- paste(sfe$subject_position[[1]], "visium", "Banksy", "lambda", 
                    lambda, "res", res, sep="-")
     pdfname <- paste0(fname, ".pdf")
     pdf(here("plots", "cindy", "05_segmentRegions", "banksy", "visium", pdfname))
-    p1
+    print(p1)
     dev.off()
 } else{
+    
+    p1 <- make_escheR(sfe, y_reverse=FALSE) %>%
+        add_fill(var=clustName)+
+        scale_fill_manual(values=getPalette(colourCount))
+    
     fname <- paste(sfe$region_id[[1]], "Banksy", "lambda", 
                    lambda, "res", res, sep="-")
     pdfname <- paste0(fname, ".pdf")
     pdf(here("plots", "cindy", "05_segmentRegions", "banksy", pdfname))
-    p1
+    print(p1)
     dev.off()
 }
 
