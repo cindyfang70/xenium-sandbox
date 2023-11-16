@@ -1,5 +1,5 @@
 suppressPackageStartupMessages({
-    library(Voyager)
+    #library(Voyager)
     library(SpatialFeatureExperiment)
     library(SpatialExperiment)
     library(ggplot2)
@@ -72,6 +72,9 @@ new.spe$platform <- "Visium"
 
 new.sfe$clust <- paste0(new.sfe$platform, new.sfe$clust_M1_lam0.9_k50_res1.2)
 new.spe$clust <- paste0(new.spe$platform, new.spe$BayesSpace_harmony_06)
+
+new.sfe$clust_M1_lam0.9_k50_res1.2 <- NULL
+new.spe$BayesSpace_harmony_06 <- NULL
 spes.all <- cbind(new.sfe, new.spe)
 
 #spes.all <- logNormCounts(spes.all)
