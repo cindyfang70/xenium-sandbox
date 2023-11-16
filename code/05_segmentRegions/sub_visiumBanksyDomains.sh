@@ -10,4 +10,4 @@ sample=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $2}' $c
 
 module load conda_R/4.3.x
 
-Rscript code/cindy/05_segmentRegions/visiumBanksyDomains.R processed-data/cindy/visium/${sample}-visium-SPE.RDS
+Rscript code/cindy/05_segmentRegions/banksyDomains.R processed-data/cindy/visium/${sample}-visium-SPE.RDS 0.9 0.8
