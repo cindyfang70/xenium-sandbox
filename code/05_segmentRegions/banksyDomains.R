@@ -20,9 +20,15 @@ suppressPackageStartupMessages({
 # tutorial: https://github.com/prabhakarlab/Banksy/tree/bioc
 #------------------------------------------------------------#
 args <- commandArgs(trailingOnly = TRUE)
-print(args[[1]])
+lambda <- args[[2]]
+#k <- args[[3]]
+res <- args[[3]]
+
+# read in the data
 sfe <- readRDS(args[[1]])
-colData(sfe) <- colData(sfe)[!grepl("^clust", colnames(colData(sfe)))]
+# delete this line after the first run
+colData(sfe) <- colData(sfe)[,!grepl("^clust", colnames(colData(sfe)))]
+
 
 sfe <- computeLibraryFactors(sfe)
 aname <- "normcounts"
@@ -30,37 +36,40 @@ assay(sfe, aname) <- normalizeCounts(sfe, log = FALSE)
 
 
 # Compute neighbourhood matrices
-lambda <- c(0, 0.9)
+#lambda <- c(0, 0.9)
 k_geom <- c(15, 30)
 
-sfe <- Banksy::computeBanksy(sfe, assay_name = aname, compute_agf = TRUE, k_geom = k_geom)
+sfe <- Banksy::computeBanksy(sfe, assay_name = aname, compute_agf = TRUE,
+                             k_geom = k_geom)
 
+# run PCA and UMAP, then Leiden clustering to find spatial domains
+# lambda is in [0,1], higher values of lambda puts more weight on spatial
+# information
 set.seed(1000)
 sfe <- Banksy::runBanksyPCA(sfe, use_agf = TRUE, lambda = lambda)
 sfe <- Banksy::runBanksyUMAP(sfe, use_agf = TRUE, lambda = lambda)
-sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda, resolution = 1.2)
+sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda, 
+                             resolution = res)
 
-# connect the clusters as suggested in the tutorial
-sfe <- Banksy::connectClusters(sfe)
+# save the Banksy results
+sfeName <- str_replace(args[[1]], "\\.RDS", "-with-banksy-domains.RDS")
+saveRDS(sfe, sfeName)
 
-saveRDS(sfe, args[[1]])
+# default for the leiden algorithm in clusterBanksy is k_neighbours=50
+clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
 
 
 # plot using escheR 
-print(head(colData(sfe)["clust_M1_lam0.9_k50_res1.2"]))
-colourCount = nlevels(colData(sfe)[["clust_M1_lam0.9_k50_res1.2"]])
-print(colourCount)
+colourCount = nlevels(colData(sfe)[[clustName]])
 getPalette = colorRampPalette(brewer.pal(12, "Set3"))
 
 p1 <- make_escheR(sfe) %>%
-    add_fill(var="clust_M1_lam0.9_k50_res1.2")+
+    add_fill(var=clustName)+
     scale_fill_manual(values=getPalette(colourCount))
     
 
-#p1 <- plotSpatialFeature(sfe, "clust_M1_lam0.9_k50_res1.2", colGeometryName = "cellSeg")
-
 fname <- paste(sfe$region_id[[1]], "Banksy", "lambda", 
-               lambda[[2]], "res", 1.2, sep="-")
+               lambda, "res", res, sep="-")
 pdfname <- paste0(fname, ".pdf")
 pdf(here("plots", "cindy", "05_segmentRegions", pdfname))
 p1
