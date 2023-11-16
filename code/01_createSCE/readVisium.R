@@ -6,21 +6,34 @@ suppressPackageStartupMessages({
     library(scater)
     library(dplyr)
     library(here)
+    library(spatialLIBD)
 })
 
 #-------------------------------------------------------------------------------
 # Read in the Visum data from /dcs04/lieber/lcolladotor/spatialDLPFC_LIBD4035/spatialDLPFC
 # and subset the SPE object to the samples that we have Xenium replicates for
 #-------------------------------------------------------------------------------
+ehub <- ExperimentHub::ExperimentHub()
+raw_sce <- fetch_data(type = "spatialDLPFC_Visium", eh = ehub)
+sce <- raw_sce
 
-# Define the samples for which we want to get the Visium data
-sample_info <- c("Br6471_post", "Br6522_post", "Br8667_mid", "Br2743_mid")
+subject_positions <- c("Br6471_Post", "Br6522_Post", "Br8667_Mid", "Br2743_Mid")
+sce$position <- substr(sce$position, 1,3)
+sce$position[grepl("pos", sce$position)] <- "Post"
+sce$position <- str_to_title(sce$position)
 
-load("/dcs04/lieber/lcolladotor/spatialDLPFC_LIBD4035/spatialDLPFC/processed-data/rdata/spe/01_build_spe/spe_filtered_final.Rdata")
+sce$subject_position <- paste(sce$subject, sce$position, sep="_")
 
-for (i in 1:length(sample_info)){
-    sample_id <- sample_info[[i]]
-    spe <- spe_raw[,spe_raw$sample_id == sample_id]
-    spe
-    saveRDS(spe, here("processed-data", "cindy", "visium", paste0(sample_id, "-visium-SPE.RDS")))
+
+# Use BayesSpace_harmony_09 as the layer annotations.
+# This is what's shown in the Visium paper and plotted here:
+# https://github.com/LieberInstitute/spatialDLPFC/blob/main/code/analysis/03_BayesSpace/03_BayesSpace_big_plots.R
+
+# subset the big SPE to the ones we have Xenium replicates for
+spes <- list()
+for (id in subject_positions){
+    spe <- sce[,sce$subject_position==id]
+    spes <- rlist::list.append(spes, spe)
+    fname <- paste0(id, "-Visium-SPE.RDS")
+    saveRDS(spe, here("processed-data", "cindy", "visium", fname))
 }
