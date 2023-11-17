@@ -1,6 +1,5 @@
 suppressPackageStartupMessages({
     library(Voyager)
-    library(SFEData)
     library(patchwork)
     library(SpatialFeatureExperiment)
     library(SingleCellExperiment)
@@ -28,14 +27,16 @@ suppressPackageStartupMessages({
 
 
 ##### Slide 5434 #####
-data_dir <- "output-XETG00089__0005434__Region_1__20230831__172339"
+data_dir <- "slide-5434"
 
 # Read in the three regions
-br6471_p <- readRDS(here("data", data_dir, "Br6471_Post_SFE.RDS"))
-br6522_p <- readRDS(here("data", data_dir, "Br6522_Post_SFE.RDS"))
-br8667_m <- readRDS(here("data", data_dir, "Br8667_Mid_SFE.RDS"))
+br6471_p <- readRDS(here("processed-data", "cindy", data_dir, "Br6471_Post_SFE.RDS"))
+br6522_p <- readRDS(here("processed-data", "cindy", data_dir, "Br6522_Post_SFE.RDS"))
+br8667_m <- readRDS(here("processed-data", "cindy", data_dir, "Br8667_Mid_SFE.RDS"))
 
-sfe.all <- readRDS(here("data", data_dir, "xenium-0005434-SFE.RDS"))
+sfe.all <- readRDS(here("processed-data", "cindy", data_dir, "xenium-0005434-SFE.RDS"))
+
+sfe.all <- sfe.all[,which(sfe.all$region_id != "Sample")]
 
 br6471_p$total_gene_counts <- br6471_p$total_counts - br6471_p$subsets_any_neg_sum
 br6522_p$total_gene_counts <- br6522_p$total_counts - br6522_p$subsets_any_neg_sum
@@ -64,30 +65,48 @@ p3 <- plotColData(br8667_m, x="nucleus_area", y="total_counts", bin=100)+
 
 
 
-br6471_p$nucleus_area_100 <- br6471_p$nucleus_area >= 100
+br6471_p$nucleus_area_200 <- br6471_p$nucleus_area >= 200
 br6471_p$nucleus_area_50 <- br6471_p$nucleus_area >= 50
 
-br6522_p$nucleus_area_100 <- br6522_p$nucleus_area >= 100
-br8667_m$nucleus_area_100 <- br8667_m$nucleus_area >= 100
+br6522_p$nucleus_area_200 <- br6522_p$nucleus_area >= 200
+br8667_m$nucleus_area_200 <- br8667_m$nucleus_area >= 200
 
-n1 <- plotSpatialFeature(br6471_p, "nucleus_area_100", colGeometryName = "cellSeg")+
+# n1 <- plotSpatialFeature(br6471_p, "nucleus_area_100", colGeometryName = "cellSeg")+
+#     ggtitle(unique(br6471_p$region_id))
+# 
+# n2 <- plotSpatialFeature(br6522_p, "nucleus_area_100", colGeometryName = "cellSeg")+
+#     ggtitle(unique(br6522_p$region_id))
+# 
+# n3 <- plotSpatialFeature(br8667_m, "nucleus_area_100", colGeometryName = "cellSeg")+
+#     ggtitle(unique(br8667_m$region_id))
+
+n1 <- make_escheR(br6471_p) |>
+    add_fill("nucleus_area_200", point_size = 0.5)+
+    scale_fill_manual(values=c("grey", "red"))+
     ggtitle(unique(br6471_p$region_id))
 
-n2 <- plotSpatialFeature(br6522_p, "nucleus_area_100", colGeometryName = "cellSeg")+
+n2 <- make_escheR(br6522_p) |>
+    add_fill("nucleus_area_200", point_size = 0.5)+
+    scale_fill_manual(values=c("grey", "red"))+
     ggtitle(unique(br6522_p$region_id))
 
-n3 <- plotSpatialFeature(br8667_m, "nucleus_area_100", colGeometryName = "cellSeg")+
+n3 <- make_escheR(br8667_m) |>
+    add_fill("nucleus_area_200", point_size = 0.5)+
+    scale_fill_manual(values=c("grey", "red"))+
     ggtitle(unique(br8667_m$region_id))
 
 
 np1 <- plotColData(br6471_p, x="nucleus_area", y="subsets_any_neg_percent", bin=100)+
-    ggtitle(unique(br6471_p$region_id)[[1]])
+    ggtitle(unique(br6471_p$region_id)[[1]])+
+    geom_smooth(method="lm")
 
 np2 <- plotColData(br6522_p, x="nucleus_area", y="subsets_any_neg_percent", bin=100)+
-    ggtitle(unique(br6522_p$region_id)[[1]])
+    ggtitle(unique(br6522_p$region_id)[[1]])+
+    geom_smooth(method="lm")
 
 np3 <- plotColData(br8667_m, x="nucleus_area", y="subsets_any_neg_percent", bin=100)+
-    ggtitle(unique(br8667_m$region_id)[[1]])
+    ggtitle(unique(br8667_m$region_id)[[1]])+
+    geom_smooth(method="lm")
 
 # br6471_p <- addPerCellQCMetrics(br6471_p, subsets=list(
 #     unassigned_codeword="unassigned_codeword_counts"))
@@ -116,7 +135,7 @@ nt3 <- plotColData(br6522_p, x="total_gene_counts", y="subsets_any_neg_percent",
     ggtitle(unique(br6522_p$region_id)[[1]])+
     geom_smooth(method="lm")
 
-pdf(here("plots", "xenium_plots", "slide5434_QCPlots.pdf"), height=5, width=12)
+pdf(here("plots", "02_qualityControl", "slide5434_QCPlots.pdf"), height=5, width=12)
 print(h1)
 print(h2)
 print(p1+p2+p3)
@@ -131,14 +150,14 @@ dev.off()
 
 
 
-data_dir <- "output-XETG00089__0005548__Region_1__20230831__172339"
+data_dir <- "slide-5548"
 
 # Read in the three regions
-br6471_p <- readRDS(here("data", data_dir, "Br6471_Post_SFE.RDS"))
-br2743_m <- readRDS(here("data", data_dir, "Br2743_Mid_SFE.RDS"))
-br8667_m <- readRDS(here("data", data_dir, "Br8667_Mid_SFE.RDS"))
+br6471_p <- readRDS(here("processed-data", "cindy", data_dir, "Br6471_Post_SFE.RDS"))
+br2743_m <- readRDS(here("processed-data", "cindy", data_dir, "Br2743_Mid_SFE.RDS"))
+br8667_m <- readRDS(here("processed-data", "cindy", data_dir, "Br8667_Mid_SFE.RDS"))
 
-sfe.all <- readRDS(here("data", data_dir, "xenium-0005548-SFE.RDS"))
+sfe.all <- readRDS(here("processed-data", "cindy", data_dir, "xenium-0005548-SFE.RDS"))
 
 br6471_p$total_gene_counts <- br6471_p$total_counts - br6471_p$subsets_any_neg_sum
 br2743_m$total_gene_counts <- br2743_m$total_counts - br2743_m$subsets_any_neg_sum
@@ -166,20 +185,37 @@ p3 <- plotColData(br8667_m, x="nucleus_area", y="total_counts", bin=100)+
     ggtitle(unique(br8667_m$region_id)[[1]])
 
 
-br6471_p$nucleus_area_100 <- br6471_p$nucleus_area >= 100
+br6471_p$nucleus_area_200 <- br6471_p$nucleus_area >= 200
 br6471_p$nucleus_area_50 <- br6471_p$nucleus_area >= 50
 
-br2743_m$nucleus_area_100 <- br2743_m$nucleus_area >= 100
-br8667_m$nucleus_area_100 <- br8667_m$nucleus_area >= 100
+br2743_m$nucleus_area_200 <- br2743_m$nucleus_area >= 200
+br8667_m$nucleus_area_200 <- br8667_m$nucleus_area >= 200
 
-n1 <- plotSpatialFeature(br6471_p, "nucleus_area_100", colGeometryName = "cellSeg")+
+# n1 <- plotSpatialFeature(br6471_p, "nucleus_area_100", colGeometryName = "cellSeg")+
+#     ggtitle(unique(br6471_p$region_id))
+# 
+# n2 <- plotSpatialFeature(br2743_m, "nucleus_area_100", colGeometryName = "cellSeg")+
+#     ggtitle(unique(br2743_m$region_id))
+# 
+# n3 <- plotSpatialFeature(br8667_m, "nucleus_area_100", colGeometryName = "cellSeg")+
+#     ggtitle(unique(br8667_m$region_id))
+
+n1 <- make_escheR(br6471_p) |>
+    add_fill("nucleus_area_200")+
+    scale_fill_manual(values=c("grey", "red"))+
     ggtitle(unique(br6471_p$region_id))
 
-n2 <- plotSpatialFeature(br2743_m, "nucleus_area_100", colGeometryName = "cellSeg")+
+n2 <- make_escheR(br2743_m) |>
+    add_fill("nucleus_area_200")+
+    scale_fill_manual(values=c("grey", "red"))+
     ggtitle(unique(br2743_m$region_id))
 
-n3 <- plotSpatialFeature(br8667_m, "nucleus_area_100", colGeometryName = "cellSeg")+
+n3 <- make_escheR(br8667_m) |>
+    add_fill("nucleus_area_200")+
+    scale_fill_manual(values=c("grey", "red"))+
     ggtitle(unique(br8667_m$region_id))
+
+
 
 
 np1 <- plotColData(br6471_p, x="nucleus_area", y="subsets_any_neg_percent", bin=100)+
@@ -219,7 +255,7 @@ nt3 <- plotColData(br8667_m, x="total_gene_counts", y="subsets_any_neg_percent",
     geom_smooth(method="lm")
 
 
-pdf(here("plots", "xenium_plots", "slide5548_QCPlots.pdf"), height=5, width=12)
+pdf(here("plots", "02_qualityControl", "slide5548_QCPlots.pdf"), height=5, width=12)
 print(h1)
 print(h2)
 print(p1+p2+p3)
