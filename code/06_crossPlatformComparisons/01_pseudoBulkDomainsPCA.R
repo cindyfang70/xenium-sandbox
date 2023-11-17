@@ -26,6 +26,9 @@ args <- commandArgs(trailingOnly=TRUE)
 
 sfe <- readRDS(args[[1]])
 spe <- readRDS(args[[2]])
+
+sfe.clustName <- args[[3]]
+spe.clustName <- args[[4]]
 # sfe <- readRDS(here("processed-data", "cindy", "slide-5434", 
 #                     "Br8667_Mid_SFE_filt.RDS"))
 # 
@@ -33,8 +36,8 @@ spe <- readRDS(args[[2]])
 
 
 # pseudobulk across the domain labels
-sfe.summed <- aggregateAcrossCells(sfe, id=colData(sfe)[,c("clust_M1_lam0.9_k50_res1.2")])
-spe.summed <- aggregateAcrossCells(spe, id=colData(spe)[,c("BayesSpace_harmony_06")])
+sfe.summed <- aggregateAcrossCells(sfe, id=colData(sfe)[,c(sfe.clustName)])
+spe.summed <- aggregateAcrossCells(spe, id=colData(spe)[,c(spe.clustName)])
 
 # convert the SFE to SPE so that the two datasets can be combined
 sfe.summed <- SFEtoSPE(sfe.summed)
@@ -45,8 +48,8 @@ spe.summed <- spe.summed[which(rowData(spe.summed)$gene_name %in% rownames(sfe.s
 spe.summed$sample_id <- spe.summed$subject_position 
 
 # Now subset the colData for both to have the same
-colData(sfe.summed) <- colData(sfe.summed)[c("sample_id", "clust_M1_lam0.9_k50_res1.2")]
-colData(spe.summed) <- colData(spe.summed)[c("sample_id", "BayesSpace_harmony_06")]
+colData(sfe.summed) <- colData(sfe.summed)[c("sample_id", sfe.clustName)]
+colData(spe.summed) <- colData(spe.summed)[c("sample_id", spe.clustName)]
 
 # rename the spatial coordinates to be the same 
 col <- spatialCoords(spe.summed)[,1]
@@ -70,11 +73,11 @@ colData(new.sfe) <- colData(sfe.summed)
 new.sfe$platform <- "Xenium"
 new.spe$platform <- "Visium"
 
-new.sfe$clust <- paste0(new.sfe$platform, new.sfe$clust_M1_lam0.9_k50_res1.2)
-new.spe$clust <- paste0(new.spe$platform, new.spe$BayesSpace_harmony_06)
+new.sfe$clust <- paste0(new.sfe$platform, colData(new.sfe)[sfe.clustName])
+new.spe$clust <- paste0(new.spe$platform, colData(new.spe)[spe.clustName])
 
-new.sfe$clust_M1_lam0.9_k50_res1.2 <- NULL
-new.spe$BayesSpace_harmony_06 <- NULL
+colData(new.sfe)[sfe.clustName] <- NULL
+colData(new.spe)[spe.clustName] <- NULL
 spes.all <- cbind(new.sfe, new.spe)
 
 #spes.all <- logNormCounts(spes.all)
@@ -88,11 +91,15 @@ ComplexHeatmap::Heatmap(m)
 m <- m[!grepl("Visium", rownames(m)),!grepl("Xenium", colnames(m))]
 
 
-pdfname <- here("plots", "cindy", "06_crossPlatformComparisons0", 
+pdfname <- here("plots", "cindy", "06_crossPlatformComparisons", 
                 paste0(unique(sfe$region_id), 
                 "Visium-Xenium-Correlation-Heatmap.pdf"))
 
 pdf(pdfname)
-ComplexHeatmap::Heatmap(m, name="Pearson Cor")
+ComplexHeatmap::Heatmap(m, name="Pearson Cor", column_title=
+                            paste(unique(sfe$region_id), 
+                                  spe.clustName, "vs", 
+                                  sfe.clustName,
+                                  sep=" "))
 dev.off()
-
+# need to figure out what layers the bayesspace labels correspond to
