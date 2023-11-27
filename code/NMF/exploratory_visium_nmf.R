@@ -5,6 +5,7 @@ library(CoGAPS)
 library(projectR)
 library(spatialLIBD)
 library(escheR)
+library(here)
 
 # Try using RcppML::nmf for non-negative matrix factorization to compute a feature
 # factor matrix (Amplitude matrix in scCoGAPS terminology) from the manually
@@ -22,33 +23,30 @@ x <- readRDS("processed-data/cindy/slide-5434/Br6471_Post_SFE_filt.RDS")
 
 # NMF on the annotated visium data, try with just counts first but might
 # need to use lognormcounts
-model <- RcppML::nmf(counts(vis_anno), k = 10)
+k <- 10
+model <- RcppML::nmf(counts(vis_anno), k = k, seed=1237)
 patterns <- t(model$h)
 
 colData(vis_anno) <- cbind(colData(vis_anno), patterns)
 
-# plot patterns
-pl <- make_escheR(vis_anno) |>
-    add_ground("layer_guess_reordered")
+plist <- list()
+pdf(here("plots", "NMF", sprintf("visium-raw-counts-nmf-k$s.pdf", k)),
+    height=20, width=20)
+for (i in 1:dim(patterns)[[2]]){
+    patternName <- paste0("V", i)
+    p <- make_escheR(vis_anno) |>
+        add_ground("layer_guess_reordered") |>
+        add_fill(patternName) +
+        scale_fill_gradient(low = "white", high = "black")+
+        theme(legend.position="none")+
+        ggtitle(patternName)
+    plist[[i]] <- p
+    
+}
+plist <- rlist::list.append(plist, pl)
 
-p1 <- make_escheR(vis_anno) |>
-    add_fill("V1") +
-    scale_fill_gradient(low = "white", high = "black")
-
-p2 <- make_escheR(vis_anno) |>
-    add_fill("V2") +
-    scale_fill_gradient(low = "white", high = "black")
-
-p3 <- make_escheR(vis_anno) |>
-    add_fill("V3") +
-    scale_fill_gradient(low = "white", high = "black")
-
-p8 <- make_escheR(vis_anno) |>
-    add_ground("layer_guess_reordered") |>
-    add_fill("V8") +
-    scale_fill_gradient(low = "white", high = "black")
-
-pl + p1 + p2
+do.call(gridExtra::grid.arrange, c(plist,ncol=3))
+dev.off()
 # 
 # recon <- model$w %*% model$h
 # 
