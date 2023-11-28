@@ -23,12 +23,13 @@ ehub <- ExperimentHub::ExperimentHub()
 vis_anno <- fetch_data(type = "spe", eh = ehub)
 # use layer_guess_reordered as the manual annotations
 
-# NMF on the annotated visium data, try with just counts first but might
-# need to use lognormcounts
+# NMF on the annotated visium data
 k <- 20
-A <- logcounts(vis_anno)
+A <- logcounts(vis_anno) # using logcounts because there are multiple datasets
 model <- RcppML::nmf(A, k = k, seed=1237)
 patterns <- t(model$h) # these are the factors
+
+rownames(model$w) <- rowData(vis_anno)$gene_name
 
 saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
 
@@ -36,8 +37,6 @@ colnames(patterns) <- paste0("NMF", 1:dim(patterns)[[2]])
 colData(vis_anno) <- cbind(colData(vis_anno), patterns)
 
 brains <- unique(vis_anno$sample_id)
-
-#all.plots <-list()
 pdf(here("plots", "NMF", sprintf("all-visium-samples-NMF-k%s.pdf",k)), 
     height=25, width=20)
 for(i in 1:k){
@@ -70,20 +69,6 @@ for(i in 1:k){
     rm(pls)
     gc()
 }
-dev.off()
-
-
-for (i in seq_along(brains)){
-    do.call(gridExtra::grid.arrange, c(all.plots[[i]], ncol=4))
-}
-dev.off()
-
-plist <- rlist::list.append(plist, pl)
-
-do.call(gridExtra::grid.arrange, c(plist,ncol=3))
-
-
-
 dev.off()
 
 
