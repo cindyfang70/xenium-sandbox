@@ -16,7 +16,7 @@ library(nnet)
 # https://www.dropbox.com/scl/fi/4m2y8flc1d06z6prkjnjy/shared_example_glm.r?rlkey=34t4q0ruyjq42uldmnlmuxk0n&dl=0
 
 # read in the model
-k <- 20 
+k <- 25
 model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
 factors <- t(model$h)
 colnames(factors) <- paste0("NMF", 1:dim(factors)[[2]])
@@ -40,8 +40,7 @@ pred = unlist(lapply(1:nrow(p.fit), function(xx){
 }))
 
 # compute the prediction accuracy
-
 labs <- design$layer_guess_reordered[!is.na(design$layer_guess_reordered)]
 acc = mean(pred==labs,na.rm=T)
-acc
+acc # k=20: 0.7441152, k=15: 0.712545, k=25: 0.7493769
                  

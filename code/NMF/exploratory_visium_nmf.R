@@ -21,13 +21,13 @@ library(ggforce)
 # get the manually annotated visium data
 ehub <- ExperimentHub::ExperimentHub()
 vis_anno <- fetch_data(type = "spe", eh = ehub)
-vis_anno <- vis_anno[,which(vis_anno$sample_id == 151673)]
 # use layer_guess_reordered as the manual annotations
 
 # NMF on the annotated visium data, try with just counts first but might
 # need to use lognormcounts
 k <- 20
-model <- RcppML::nmf(counts(vis_anno), k = k, seed=1237)
+A <- logcounts(vis_anno)
+model <- RcppML::nmf(A, k = k, seed=1237)
 patterns <- t(model$h) # these are the factors
 
 saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
@@ -35,37 +35,55 @@ saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-
 colnames(patterns) <- paste0("NMF", 1:dim(patterns)[[2]])
 colData(vis_anno) <- cbind(colData(vis_anno), patterns)
 
-plist <- list()
-pdf(here("plots", "NMF", sprintf("visium-raw-counts-h-matrix-nmf-k%s.pdf", k)),
-    height=35, width=35)
-for (i in 1:dim(patterns)[[2]]){
+brains <- unique(vis_anno$sample_id)
+
+#all.plots <-list()
+pdf(here("plots", "NMF", sprintf("all-visium-samples-NMF-k%s.pdf",k)), 
+    height=25, width=20)
+for(i in 1:k){
+    pls<- list()
     patternName <- paste0("NMF", i)
-    p <- make_escheR(vis_anno) |>
-        add_ground("layer_guess_reordered") |>
-        add_fill(patternName) +
-        scale_fill_gradient(low = "white", high = "black")+
-        theme(legend.position="none")+
-        ggtitle(patternName)
-    plist[[i]] <- p
+    for (j in seq_along(brains)){
+        spe <- vis_anno[,which(vis_anno$sample_id==brains[[j]])]
+        pls[[j]] <- make_escheR(spe) |>
+            add_ground("layer_guess_reordered") |>
+            add_fill(patternName) +
+            scale_fill_gradient(low = "white", high = "black")+
+            ggtitle(paste(unique(spe$sample_id), patternName))
+    }
+    cor.mat <- colData(vis_anno)[,c(paste0("NMF", i), 
+                               "layer_guess_reordered", "sample_id")] %>%
+        as.data.frame()%>%
+        pivot_longer(cols=starts_with("NMF"))
+    bp <- ggplot(transform(cor.mat, name=factor(name, levels=colnames(patterns))),
+                 aes(x=layer_guess_reordered, y=value, 
+                     fill=layer_guess_reordered))+
+        geom_boxplot()+
+        facet_wrap(~sample_id, scales="free")+
+        scale_y_log10()+
+        theme(legend.position="none", plot.title=element_text(size=20))+
+        theme_minimal()
+ 
     
+    do.call(gridExtra::grid.arrange, c(pls, ncol=3))
+    print(bp)
+    rm(pls)
+    gc()
 }
+dev.off()
+
+
+for (i in seq_along(brains)){
+    do.call(gridExtra::grid.arrange, c(all.plots[[i]], ncol=4))
+}
+dev.off()
+
 plist <- rlist::list.append(plist, pl)
 
 do.call(gridExtra::grid.arrange, c(plist,ncol=3))
 
 
-cor.mat <- colData(vis_anno)[,c(paste0("NMF", 1:dim(patterns)[[2]]), 
-                                "layer_guess_reordered")] %>%
-    as.data.frame()%>%
-    pivot_longer(cols=starts_with("NMF"))
-ggplot(transform(cor.mat, name=factor(name, levels=colnames(patterns))),
-       aes(x=layer_guess_reordered, y=value, 
-                                   fill=layer_guess_reordered))+
-    geom_boxplot()+
-    facet_wrap(~name, scales="free")+
-    scale_y_log10()+
-    theme(legend.position="none", plot.title=element_text(size=20))+
-    theme_minimal()
+
 dev.off()
 
 
