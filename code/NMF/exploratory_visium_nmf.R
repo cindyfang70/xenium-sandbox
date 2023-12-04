@@ -33,7 +33,7 @@ rownames(model$w) <- rowData(vis_anno)$gene_name
 
 saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
 
-colnames(patterns) <- paste0("NMF", 1:dim(patterns)[[2]])
+colnames(patterns) <- paste0("NMF", 1:k)
 colData(vis_anno) <- cbind(colData(vis_anno), patterns)
 
 brains <- unique(vis_anno$sample_id)
@@ -90,3 +90,8 @@ dev.off()
 # )
 # 
 # dim(proj)
+design$isWM <- design$layer_guess_reordered=="WM"
+
+ggplot(as.data.frame(design), aes(x=isWM, y=NMF20))+
+    geom_boxplot()+
+    scale_y_log10()
