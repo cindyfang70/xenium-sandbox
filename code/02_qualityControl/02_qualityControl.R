@@ -1,6 +1,6 @@
 suppressPackageStartupMessages({
     library(Voyager)
-    library(SFEData)
+    #library(SFEData)
     library(patchwork)
     library(SpatialFeatureExperiment)
     library(SingleCellExperiment)
@@ -32,9 +32,9 @@ source(here("code", "01_createSCE", "xenium_helpers.R"))
 data_dir <- "slide-5434"
 
 # Read in the three regions
-br6471_p <- readRDS(here("data", data_dir, "Br6471_Post_SFE.RDS"))
-br6522_p <- readRDS(here("data", data_dir, "Br6522_Post_SFE.RDS"))
-br8667_m <- readRDS(here("data", data_dir, "Br8667_Mid_SFE.RDS"))
+br6471_p <- readRDS(here("processed-data", "cindy", data_dir, "Br6471_Post_SFE.RDS"))
+br6522_p <- readRDS(here("processed-data", "cindy", data_dir, "Br6522_Post_SFE.RDS"))
+br8667_m <- readRDS(here("processed-data", "cindy", data_dir, "Br8667_Mid_SFE.RDS"))
 
 
 filterCells <- function(sfe){
@@ -49,6 +49,7 @@ filterCells <- function(sfe){
         !sfe$is_depr_outlier &!sfe$is_negProbe_outlier &
         !sfe$is_negCodeword_outlier & sfe$nCounts > 0
     
+    sfe$keep <- inds_keep
     sfe <- sfe[,inds_keep]
     
     # remove the negative controls
@@ -59,13 +60,34 @@ br6471_p_filt <- filterCells(br6471_p)
 br6522_p_filt <- filterCells(br6522_p)
 br8667_m_filt <- filterCells(br8667_m)
 
+# p1 <- plotColData(br6471_p_filt, y="subsets_any_neg_sum",
+#             colour_by="keep",
+#             show_median=TRUE,
+#             point_alpha=0.3)+
+#     ggtitle(unique(br6471_p_filt$region_id)) 
+# 
+# p2 <- plotColData(br6522_p_filt, y="subsets_any_neg_sum",
+#             colour_by="keep",
+#             show_median=TRUE,
+#             point_alpha=0.3)+
+#     ggtitle(unique(br6522_p_filt$region_id))
+# 
+# p3 <- plotColData(br8667_m_filt, y="subsets_any_neg_sum",
+#             colour_by="keep",
+#             show_median=TRUE,
+#             point_alpha=0.3)+
+#     ggtitle(unique(br8667_m_filt$region_id))
+# 
+# pdf("qcplots.pdf", height=8, width=20)
+# p1+p2+p3
+# dev.off()
 
 saveRDS(br6471_p_filt, here("data", data_dir, "Br6471_Post_SFE_filt.RDS"))
 saveRDS(br6522_p_filt, here("data", data_dir, "Br6522_Post_SFE_filt.RDS"))
 saveRDS(br8667_m_filt , here("data", data_dir, "Br8667_Mid_SFE_filt.RDS"))
 
 
-##### Slide 5548 #####
+##### Slide 5548 ##### 
 
 data_dir <- "slide-5548"
 

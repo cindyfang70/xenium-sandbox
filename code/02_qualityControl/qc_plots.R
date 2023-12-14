@@ -135,6 +135,10 @@ nt3 <- plotColData(br6522_p, x="total_gene_counts", y="subsets_any_neg_percent",
     ggtitle(unique(br6522_p$region_id)[[1]])+
     geom_smooth(method="lm")
 
+cols_use <- names(colData(br8667_m))[str_detect(names(colData(sfe)), "_percent$")]
+cols_use <- cols_use[!grepl("subsets_anti_percent", cols_use)]
+
+
 pdf(here("plots", "02_qualityControl", "slide5434_QCPlots.pdf"), height=5, width=12)
 print(h1)
 print(h2)
@@ -143,6 +147,22 @@ print(n1+n2+n3)
 print(np1+np2+np3)
 print(c1+c2+c3)
 print(nt1 + nt2 + nt3)
+
+plotColDataHistogram(br6471_p, cols_use, bins = 100, ncol = 3)+ 
+    scale_x_log10() +
+    annotation_logticks(sides = "b")+
+    ggtitle(unique(br6471_p$region_id))+
+    xlab("percentage of total counts")
+plotColDataHistogram(br6522_p, cols_use, bins = 100, ncol = 3)+ 
+    scale_x_log10() +
+    annotation_logticks(sides = "b")+
+    ggtitle(unique(br6522_p$region_id))+
+    xlab("percentage of total counts")
+plotColDataHistogram(br8667_m, cols_use, bins = 100, ncol = 3)+ 
+    scale_x_log10() +
+    annotation_logticks(sides = "b")+
+    ggtitle(unique(br8667_m$region_id))+
+    xlab("percentage of total counts")
 dev.off()
 
 

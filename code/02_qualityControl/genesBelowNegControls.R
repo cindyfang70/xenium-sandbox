@@ -9,6 +9,7 @@ suppressPackageStartupMessages({
     library(BiocParallel)
     library(dplyr)
     library(here)
+    library(escheR)
 })
 
 #-------------------------------------------------------------------------------
