@@ -45,29 +45,29 @@ for (j in seq_along(sfe_list)){
     saveRDS(proj, here("processed-data", "cindy", "NMF", fname))
     
     factors <- t(proj)
-    colnames(factors) <- paste0("NMF", 1:k)
+    colnames(factors) <- paste0("NMF_k",k,"_", 1:k)
     
     # rescale the factors to match the Visium factors' range.
     xen.factors.scaled <- matrix(,ncol=k, nrow=nrow(factors))
     for(i in 1:k){
         xen.factors.scaled[,i] <- rescaleFactors(factors[,i], vis.factors[,i])
     }
-    colnames(xen.factors.scaled) <- paste0("NMF", 1:k)
+    colnames(xen.factors.scaled) <- paste0("NMF_k",k,"_", 1:k)
     colData(sfe) <- cbind(colData(sfe), xen.factors.scaled)
     
     sfe_list[[j]] <- sfe
 }
 
-#if(!file.exists(here("plots","NMF", sprintf("project-factors-scaled-xenium-k%s-5434.pdf", k)))){
+if(!file.exists(here("plots","NMF", sprintf("project-factors-scaled-xenium-k%s-5434.pdf", k)))){
 pdf(here("plots","NMF", sprintf("project-factors-scaled-xenium-k%s-5434.pdf", k)),
         height=15, width=45)
     for (i in 1:k){
         pls <- list()
         for (j in seq_along(sfe_list)){
             sfe <- sfe_list[[j]]
-            patternName <- paste0("NMF", i)
+            patternName <- paste0("NMF_k",k,"_", i)
             factors <- as.matrix(colData(sfe)
-                                 [,grepl("NMF", colnames(colData(sfe)))])
+                                 [,grepl(sprintf("NMF_k%s",k), colnames(colData(sfe)))])
             pls[[j]] <- make_escheR(sfe, y_reverse=FALSE) |>
                 add_ground("clust_M0_lam0.9_k50_res0.4")|>
                 add_fill(patternName) +
@@ -80,7 +80,7 @@ pdf(here("plots","NMF", sprintf("project-factors-scaled-xenium-k%s-5434.pdf", k)
     }
     dev.off()
     
-#}
+}
 
 
 ## predict using the multinomial model
@@ -91,7 +91,8 @@ library(MASS)
 plist <- list()
 for (i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
-    factors <- colData(sfe)[grepl("NMF", colnames(colData(sfe)))]
+    factors <- colData(sfe)[grepl(sprintf("NMF_k%s",k), colnames(colData(sfe)))]
+    colnames(factors) <- paste0("NMF", 1:k)
     
     # predict using the multinomial model
     probs <- predict(multinom, newdata=factors, type='probs', 
@@ -104,14 +105,15 @@ for (i in seq_along(sfe_list)){
         max(probs[xx,])
     })) 
     
-    sfe$max_probs <- maxprobs
+    #sfe$max_probs <- maxprobs
     
-    sfe$predicted_layers <- preds
+    preds_name <- sprintf("predicted_layers_NMF_k%s_manual_annot",k)
+    colData(sfe)[preds_name] <- preds
     
     sfe_list[[i]] <- sfe
     sfe$counts_MOBP <- counts(sfe)[which(rownames(sfe)=="MOBP"),]
     plist[[i]] <- make_escheR(sfe, y_reverse=FALSE)|>
-        add_ground("predicted_layers") |>
+        add_ground(preds_name) |>
         add_fill("counts_MOBP") +
         scale_fill_gradient(low="white", high="black")+
         ggtitle(unique(sfe$region_id))+
@@ -121,7 +123,10 @@ for (i in seq_along(sfe_list)){
         guides(color = guide_legend(override.aes = list(stroke = 4)))
 
 }
-#if (!file.exists(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"))){
+
+sfe_all <- do.call(cbind, sfe_list)
+saveRDS(sfe_all, here("processed-data", "cindy", "slide-5434", "slide5434-all-samples-spe-with-banksy-NMF.RDS"))
+if (!file.exists(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"))){
 pdf(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"),
         height=15, width=35)
     for(i in seq_along(plist)){
@@ -134,7 +139,7 @@ pdf(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"),
             guides(color = guide_legend(override.aes = list(stroke = 4)))
         
         p2 <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
-            add_ground("predicted_layers")+
+            add_ground(preds_name)+
             theme(legend.title = element_text(size=30), 
                   legend.text = element_text(size=25))+
             guides(color = guide_legend(override.aes = list(stroke = 4)))
@@ -150,7 +155,7 @@ pdf(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"),
         
         p3 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
             add_ground("clust_M0_lam0.9_k50_res0.4", stroke=3) |>
-            add_fill("predicted_layers", point_size=1)+
+            add_fill(preds_name, point_size=1)+
             theme(legend.title = element_text(size=30), 
                   legend.text = element_text(size=25))+
             guides(color = guide_legend(override.aes = list(stroke = 4)),
@@ -160,31 +165,9 @@ pdf(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"),
     }
     dev.off()
     
-#}
+}
 
 
-
-# 
-# sfe <- sfe_list[[1]]
-# pred <- unlist(lapply(strsplit(sfe$clust_pred, split="r"), "[", 2))
-# pred[which(is.na(pred))] <- "7"
-# 
-# sfe$clust_pred <- as.numeric(pred)
-# 
-# sfe <- Banksy::connectClusters(sfe)
-# 
-# p1 <- make_escheR(sfe, y_reverse=FALSE) |>
-#     add_fill("clust_pred_num")+
-#     scale_fill_discrete()
-# 
-# p2 <- make_escheR(sfe, y_reverse=FALSE)|>
-#     add_fill("clust_M0_lam0.9_k50_res0.4")+
-#     scale_fill_discrete()
-# p1+p2
-
-# For each cell: compute the silhouette index of the transferred cluster 
-# and the silhouette index of the Banksy cluster, then assign the cell to
-# whichever has a higher sil
 all_props <-list()
 plist <- list()
 pdf(here("plots", "NMF", "predicted-layers-visium-nmf-proportions-in-banksy-5434.pdf"))
@@ -197,10 +180,11 @@ for (i in seq_along(sfe_list)){
         clust <- unique(sfe$clust_M0_lam0.9_k50_res0.4)[[k]]
         clustk <- sfe[,which(sfe$clust_M0_lam0.9_k50_res0.4 == k)]
         #print(sprintf("-------clust%s-------", clust))
-        props_k <- round(table(clustk$predicted_layers)/
-                  sum(table(clustk$predicted_layers)),3)
+        props_k <- round(table(colData(clustk)[preds_name])/
+                  sum(table(colData(clustk)[preds_name])),3)
         #print(props_k)
         props_k <- as.data.frame(props_k)
+        colnames(props_k)[[1]] <- "Layer"
         props_k$clust <- clust
         props_k$sfe <- unique(sfe$region_id)
         sfe_props[[k]] <- props_k
@@ -208,7 +192,8 @@ for (i in seq_along(sfe_list)){
     }
     all_props[[i]] <- do.call(rbind, sfe_props)
     
-    p <- ggplot(all_props[[i]], aes(x=Var1, y=Freq, fill=Var1))+
+    
+    p <- ggplot(all_props[[i]], aes(x=Layer, y=Freq, fill=Layer))+
         geom_bar(stat="identity")+
         facet_wrap(~clust, scales="free_y")+
         ylab("Proportion")+
@@ -222,9 +207,9 @@ for (i in seq_along(sfe_list)){
 }
 dev.off()
 
-all_props_df <- do.call(rbind, all_props)
-
-ggplot(all_props_df, aes(x=Var1, y=Freq, fill=Var1))+
-    geom_bar(stat="identity")+
-    facet_wrap(~sfe + clust, scales="free")+
-    theme(axis.text.x = element_text(angle=90))
+# all_props_df <- do.call(rbind, all_props)
+# 
+# ggplot(all_props_df, aes(x=Var1, y=Freq, fill=Var1))+
+#     geom_bar(stat="identity")+
+#     facet_wrap(~sfe + clust, scales="free")+
+#     theme(axis.text.x = element_text(angle=90))
