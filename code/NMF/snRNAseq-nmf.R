@@ -14,6 +14,8 @@ library(ggforce)
 # k factors. Plot each of those k factors as well as the layer labels to see
 # if any of them are associated with a particular layer.
 
+# Path on JHPCE: dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data/sce/sce_DLPFC_annotated
+
 args <- commandArgs(trailingOnly = TRUE)
 spe_path <- args[[1]]
 k <- as.numeric(args[[2]])
@@ -31,3 +33,42 @@ patterns <- t(model$h) # these are the factors
 rownames(model$w) <- rowData(vis_anno)$gene_name
 
 saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("snRNAseq-nmf-model-k%s", k)))
+
+colnames(patterns) <- paste0("NMF", 1:k)
+colData(vis_anno) <- cbind(colData(vis_anno), patterns)
+
+brains <- unique(vis_anno$sample_id)
+pdf(here("plots", "NMF", sprintf("all-snRNAseq-samples-NMF-k%s.pdf",k)), 
+    height=25, width=20)
+for(i in 1:k){
+    pls<- list()
+    patternName <- paste0("NMF", i)
+    for (j in seq_along(brains)){
+        spe <- vis_anno[,which(vis_anno$sample_id==brains[[j]])]
+        # pls[[j]] <- make_escheR(spe) |>
+        #     add_ground("layer_annotation") |>
+        #     add_fill(patternName) +
+        #     scale_fill_gradient(low = "white", high = "black")+
+        #     ggtitle(paste(unique(spe$sample_id), patternName))
+    }
+    cor.mat <- colData(vis_anno)[,c(paste0("NMF", i), 
+                                    "layer_annotation", "sample_id")] %>%
+        as.data.frame()%>%
+        pivot_longer(cols=starts_with("NMF"))
+    bp <- ggplot(transform(cor.mat, name=factor(name, levels=colnames(patterns))),
+                 aes(x=layer_annotation, y=value, 
+                     fill=layer_annotation))+
+        geom_boxplot()+
+        facet_wrap(~sample_id, scales="free")+
+        scale_y_log10()+
+        theme(legend.position="none", plot.title=element_text(size=20))+
+        theme_minimal()
+    
+    
+    #do.call(gridExtra::grid.arrange, c(pls, ncol=3))
+    print(bp)
+    #rm(pls)
+    gc()
+}
+dev.off()
+

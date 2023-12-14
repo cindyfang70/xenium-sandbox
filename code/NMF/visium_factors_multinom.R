@@ -17,7 +17,7 @@ library(nnet)
 
 # read in the model
 k <- 20
-model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
+model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
 factors <- t(model$h)
 colnames(factors) <- paste0("NMF", 1:dim(factors)[[2]])
 
@@ -33,7 +33,7 @@ mod <-  multinom(layer_guess_reordered ~ ., data = design,
                  na.action=na.exclude)
 
 # predict on the same data
-p.fit <- predict(mod, predictors=design, type='probs') 
+p.fit <- predict(mod, predictors=design[grepl("NMF", colnames(design))], type='probs') 
 
 pred = unlist(lapply(1:nrow(p.fit), function(xx){
     colnames(p.fit)[which.max(p.fit[xx,])]
@@ -47,4 +47,25 @@ acc # k=20: 0.7441152, k=15: 0.712545, k=25: 0.7493769
 
 saveRDS(mod, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-k%s-multinom-model.RDS",k)))
 
+
+layers <- matrix(,length(vis_anno$layer_guess_reordered), ncol=length(unique(vis_anno$layer_guess_reordered)))
+for (i in 1:length(unique(vis_anno$layer_guess_reordered))){
+    layers[,i] <- as.integer(vis_anno$layer_guess_reordered == 
+                                 unique(vis_anno$layer_guess_reordered)[[i]])
+    
+}
+colnames(layers) <- paste0('layer', 1:length(unique(vis_anno$layer_guess_reordered)))
+layers <- layers[,-8]
+library(corrplot)
+colnames(factors) <- paste0("NMF", 1:k)
+mat <- as.matrix(cbind(layers, factors))
+res <- cor(mat)
+res <- res[grepl("layer", rownames(res)), grepl("NMF", colnames(res))]
+corrplot(res)
                  
+res <- cor(factors)
+pdf("visium-nmf-corr-plot.pdf")
+corrplot(res, method="color", order="hclust", 
+         title="Pearson correlation between Visium NMF factors",
+         mar=c(0,0,1,0))
+dev.off()

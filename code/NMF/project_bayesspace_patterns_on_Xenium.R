@@ -103,10 +103,16 @@ for (i in seq_along(sfe_list)){
     
     sfe_list[[i]] <- sfe
     sfe$counts_MOBP <- counts(sfe)[which(rownames(sfe)=="MOBP"),]
+    
     plist[[i]] <- make_escheR(sfe, y_reverse=FALSE)|>
         add_ground("predicted_layers") |>
         add_fill("counts_MOBP") +
-        scale_fill_gradient(low="white", high="black")
+        scale_fill_gradient(low="white", high="black")+
+        ggtitle(unique(sfe$region_id))+
+        theme(legend.title = element_text(size=30), 
+              legend.text = element_text(size=25),
+              plot.title = element_text(size=40))+
+        guides(color = guide_legend(override.aes = list(stroke = 4)))
     
 }
 
@@ -114,11 +120,78 @@ pdf(here("plots", "NMF", "predicted-layers-bayesspace-nmf-scaled-5434.pdf"),
     height=15, width=35)
 for(i in seq_along(plist)){
     p <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
-        add_ground("clust_M0_lam0.9_k50_res0.4")
+        add_ground("clust_M0_lam0.9_k50_res0.4")+
+        ggtitle(unique(sfe_list[[i]]$region_id))+
+        theme(legend.title = element_text(size=30), 
+              legend.text = element_text(size=25),
+              plot.title = element_text(size=40))+
+        guides(color = guide_legend(override.aes = list(stroke = 4)))
     
     p2 <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
-        add_ground("predicted_layers")
-    print(ggpubr::ggarrange(plist[[i]], p ,p2, ncol=3))
+        add_ground("predicted_layers")+
+        theme(legend.title = element_text(size=30), 
+              legend.text = element_text(size=25))+
+        guides(color = guide_legend(override.aes = list(stroke = 4)))
+    
+    #sfe_list[[i]]$prob_less_than_80 <- sfe_list[[i]]$max_probs < 0.8
+    
+    # p3 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)%>%
+    #     add_fill("prob_less_than_80")+
+    #     scale_fill_manual(values=c("TRUE"="red", "FALSE"="grey"))
+    
+    p3 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
+        add_ground("clust_M0_lam0.9_k50_res0.4", stroke=3) |>
+        add_fill("predicted_layers", point_size=1)+
+        theme(legend.title = element_text(size=30), 
+              legend.text = element_text(size=25))+
+        guides(color = guide_legend(override.aes = list(stroke = 4)),
+               fill=guide_legend(override.aes=list(size=4)))
+    
+    p4 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)%>%
+        add_fill("max_probs")+
+        scale_fill_viridis_c(limits=c(0, 1))+
+        theme(legend.title = element_text(size=30), 
+              legend.text = element_text(size=25))+
+        ggtitle(unique(sfe_list[[i]]$region_id))
+    
+    print(ggpubr::ggarrange(plist[[i]], p ,p2, p3,p4, ncol=2))
+}
+dev.off()
+
+all_props <-list()
+plist <- list()
+pdf(here("plots", "NMF", "predicted-layers-visium-nmf-bayesspace-proportions-in-banksy-5434.pdf"))
+for (i in seq_along(sfe_list)){
+    sfe <- sfe_list[[i]]
+    #print(sprintf("-------sfe_%s-------", unique(sfe$region_id)))
+    
+    sfe_props <- list()
+    for (k in 1:length(unique(sfe$clust_M0_lam0.9_k50_res0.4))){
+        clust <- unique(sfe$clust_M0_lam0.9_k50_res0.4)[[k]]
+        clustk <- sfe[,which(sfe$clust_M0_lam0.9_k50_res0.4 == k)]
+        #print(sprintf("-------clust%s-------", clust))
+        props_k <- round(table(clustk$predicted_layers)/
+                             sum(table(clustk$predicted_layers)),3)
+        #print(props_k)
+        props_k <- as.data.frame(props_k)
+        props_k$clust <- clust
+        props_k$sfe <- unique(sfe$region_id)
+        sfe_props[[k]] <- props_k
+        names(sfe_props)[[k]] <- clust
+    }
+    all_props[[i]] <- do.call(rbind, sfe_props)
+    
+    p <- ggplot(all_props[[i]], aes(x=Var1, y=Freq, fill=Var1))+
+        geom_bar(stat="identity")+
+        facet_wrap(~clust, scales="free_y")+
+        ylab("Proportion")+
+        xlab("Predicted label from NMF")+
+        ggtitle(unique(sfe$region_id))+
+        cowplot::theme_cowplot()+
+        theme(axis.text.x = element_text(angle=90),
+              legend.position="none")
+    plist[[i]] <- p
+    print(p)
 }
 dev.off()
 
