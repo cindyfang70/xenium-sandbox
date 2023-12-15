@@ -26,7 +26,7 @@ sfe <- readRDS(here("processed-data", "cindy", "slide-5434", "slide5434-all-samp
 sfe_list <- lapply(unique(sfe$region_id), function(x) 
     sfe[, sfe$region_id == x])
 
-paste0(unique(sfe$region_id), sprintf("-raw-projected-NMF-factors-k%s.RDS", k))
+#paste0(unique(sfe$region_id), sprintf("-raw-projected-NMF-factors-k%s.RDS", k))
 
 # make violin plots for the visium factors
 colnames(vis.factors) <- paste0("NMF", 1:k)
@@ -47,11 +47,10 @@ for(i in seq_along(sfe_list)){
     factors_long <- rbind(factors_long, vis.factors_long)
     
     # make violin plots of each of the factors before quantile normalization
-    plist[[i]] <- ggplot(factors_long, aes(x=value, colour=type))+
-        geom_density()+
+    plist[[i]] <- ggplot(factors_long, aes(y=value, x=type, colour=type))+
+        geom_violin()+
         facet_wrap(~ name)+
-        coord_trans(y = "log1p")+
-        scale_x_log10()+
+        coord_trans(y="log1p")+
         theme(legend.position="none")+
         ggtitle(unique(sfe$region_id))+
         cowplot::theme_cowplot()
@@ -70,11 +69,10 @@ for(i in seq_along(sfe_list)){
     
     all_fcts_normed <- rbind(xen.factors.normed_long, vis.factors_long)
     # plot the normed factors dists
-    plist_normed[[i]] <- ggplot(all_fcts_normed , aes(x=value, colour=type))+
-        geom_density()+
+    plist_normed[[i]] <- ggplot(all_fcts_normed , aes(x=type, y=value, colour=type))+
+        geom_violin()+
         facet_wrap(~ name)+
         coord_trans(y = "log1p")+
-        scale_x_log10()+
         theme(legend.position="none")+
         ggtitle(paste0("Normed ", unique(sfe$region_id)))+
         cowplot::theme_cowplot()
