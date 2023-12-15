@@ -35,6 +35,7 @@ vis.factors_long$type <- "Visium"
 
 plist <- list()
 plist_normed <- list()
+xen.fcts.normed <- list()
 for(i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
     fct_name <- paste0(unique(sfe$region_id), sprintf("-raw-projected-NMF-factors-k%s.RDS", k))
@@ -64,6 +65,8 @@ for(i in seq_along(sfe_list)){
     }
     xen.factors.normed <- as.data.frame(xen.factors.normed)
     colnames(xen.factors.normed) <- paste0("NMF", 1:k)
+    
+    xen.fcts.normed <- rlist::list.append(xen.fcts.normed, xen.factors.normed)
     xen.factors.normed_long <- pivot_longer(xen.factors.normed, cols=everything())
     xen.factors.normed_long$type <- "Xenium"
     
@@ -85,3 +88,46 @@ for(i in seq_along(plist)){
 }
 dev.off()
 
+# Now try to use the multinomial model to predict the layer identity
+multinom <- readRDS(here("processed-data", "cindy", "NMF", 
+                         sprintf("visium-nmf-k%s-multinom-model.RDS",k)))
+library(nnet)
+library(MASS)
+
+layer_pl <- list()
+for (i in seq_along(sfe_list)){
+    sfe <- sfe_list[[i]]
+    fcts <- xen.fcts.normed[[i]]
+    
+    probs <- predict(multinom, newdata=fcts, type="probs", na.action=na.exclude)
+    
+    preds <- unlist(lapply(1:nrow(probs), function(xx){
+        colnames(probs)[which.max(probs[xx,])]})) 
+    
+    maxprobs <- unlist(lapply(1:nrow(probs), function(xx){
+        max(probs[xx,])})) 
+    
+    preds_name <- sprintf("predicted_layers_NMF_k%s_manual_annot_quant_norm",k)
+    
+    colData(sfe)[preds_name] <- preds
+    
+    sfe_list[[i]] <- sfe
+    
+    sfe$counts_MOBP <- counts(sfe)[which(rownames(sfe)=="MOBP"),]
+    layer_pl[[i]] <- make_escheR(sfe, y_reverse=FALSE)|>
+        add_ground(preds_name) |>
+        add_fill("counts_MOBP") +
+        scale_fill_gradient(low="white", high="black")+
+        ggtitle(unique(sfe$region_id))+
+        # theme(legend.title = element_text(size=30), 
+        #       legend.text = element_text(size=25),
+        #       plot.title = element_text(size=40))+
+        guides(color = guide_legend(override.aes = list(stroke = 4)))
+    
+}
+
+pdf(here("plots", "NMF", 
+         sprintf("predicted-layers-visium-nmf-k%s-quant-norm-5434.pdf", k)),
+    height=10, width=25)
+print(ggpubr::ggarrange(layer_pl[[1]], layer_pl[[2]], layer_pl[[3]], ncol=3))
+dev.off()
