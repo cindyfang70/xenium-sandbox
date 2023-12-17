@@ -15,22 +15,44 @@ library(nnet)
 # dataset. See example here from Yi Wang: 
 # https://www.dropbox.com/scl/fi/4m2y8flc1d06z6prkjnjy/shared_example_glm.r?rlkey=34t4q0ruyjq42uldmnlmuxk0n&dl=0
 
+# if running locally:
+args <- c("snRNA-seq", "20", 
+          "processed-data/cindy/NMF/snRNA-seq/snRNAseq-nmf-model-k20.RDS")
+
 # read in the model
-k <- 20
-model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
-factors <- t(model$h)
-colnames(factors) <- paste0("NMF", 1:dim(factors)[[2]])
+model_type <- args[[1]]
+k <- args[[2]]
 
 # get the manually annotated Visium data
 ehub <- ExperimentHub::ExperimentHub()
-vis_anno <- fetch_data(type = "spe", eh = ehub)
+if(model_type=="snRNA-seq"){
+    # load(here("/dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data",
+    #           "sce", "sce_DLPFC.Rdata"), verbose = TRUE) 
+    
+    load(here("processed-data", "cindy", "snRNA-seq", "sce_DLPFC.Rdata"))
+    layer_name <- "layer_annotation"
+}else if(model_type=="manual_annot"){
+    sce <- fetch_data(type = "spe", eh = ehub)
+    layer_name <- "layer_guess_reordered"
+} else if (model_type=="bayesspace"){
+    sce <- fetch_data(type = "spatialDLPFC_Visium", eh = ehub)
+    layer_name <- "BayesSpace_harmony_09"
+}
+
+#model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
+
+model <- readRDS(args[[3]])
+factors <- t(model$h)
+colnames(factors) <- paste0("NMF", 1:k)
 
 # create the design matrix
-design <- cbind(colData(vis_anno)["layer_guess_reordered"], factors)
+design <- cbind(colData(sce)[layer_name], factors)
+# rename the layer column so it's consistent across all models
+colnames(design)[!grepl("^NMF", colnames(design))] <-"layer"
 
 # fit the multinomial model
-mod <-  multinom(layer_guess_reordered ~ ., data = design,
-                 na.action=na.exclude)
+mod <-  multinom(layer ~ ., data = design,
+                 na.action=na.exclude, maxit=1000)
 
 # predict on the same data
 p.fit <- predict(mod, predictors=design[grepl("NMF", colnames(design))], type='probs') 
@@ -40,32 +62,8 @@ pred = unlist(lapply(1:nrow(p.fit), function(xx){
 }))
 
 # compute the prediction accuracy
-labs <- design$layer_guess_reordered[!is.na(design$layer_guess_reordered)]
+labs <- design$layer[!is.na(design$layer)]
 acc = mean(pred==labs,na.rm=T)
-acc # k=20: 0.7441152, k=15: 0.712545, k=25: 0.7493769
-#k=20 all samples: 0.7703311
+acc 
 
-saveRDS(mod, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-k%s-multinom-model.RDS",k)))
-
-
-layers <- matrix(,length(vis_anno$layer_guess_reordered), ncol=length(unique(vis_anno$layer_guess_reordered)))
-for (i in 1:length(unique(vis_anno$layer_guess_reordered))){
-    layers[,i] <- as.integer(vis_anno$layer_guess_reordered == 
-                                 unique(vis_anno$layer_guess_reordered)[[i]])
-    
-}
-colnames(layers) <- paste0('layer', 1:length(unique(vis_anno$layer_guess_reordered)))
-layers <- layers[,-8]
-library(corrplot)
-colnames(factors) <- paste0("NMF", 1:k)
-mat <- as.matrix(cbind(layers, factors))
-res <- cor(mat)
-res <- res[grepl("layer", rownames(res)), grepl("NMF", colnames(res))]
-corrplot(res)
-                 
-res <- cor(factors)
-pdf("visium-nmf-corr-plot.pdf")
-corrplot(res, method="color", order="hclust", 
-         title="Pearson correlation between Visium NMF factors",
-         mar=c(0,0,1,0))
-dev.off()
+saveRDS(mod, here("processed-data", "cindy", "NMF", model_type, sprintf("visium-nmf-%s-k%s-multinom-model.RDS",model_type, k)))
