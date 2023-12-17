@@ -2,6 +2,7 @@
 #SBATCH --job-name=NMF_SNRNA
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
+#SBATCH --mem=64G
 
 
 module load conda_R/4.3.x
