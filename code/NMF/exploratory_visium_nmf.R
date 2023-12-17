@@ -8,11 +8,6 @@ library(escheR)
 library(here)
 library(tidyverse)
 library(ggforce)
-# Try using RcppML::nmf for non-negative matrix factorization to compute a feature
-# factor matrix (Amplitude matrix in scCoGAPS terminology) from the manually
-# annotated visium dataset. Then, use projectR to project the Xenium datasets
-# into the column space of the feature factor matrix. 
-
 # Use RcppML::nmf to perform non-negative matrix factorization on the manually
 # annotated Visium dataset to get a loadings matrix and a factors matrix with 
 # k factors. Plot each of those k factors as well as the layer labels to see
