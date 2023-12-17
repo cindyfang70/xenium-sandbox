@@ -21,7 +21,7 @@ spe_path <- args[[1]]
 k <- as.numeric(args[[2]])
 
 # try reading in data based on this: https://github.com/LieberInstitute/DLPFC_snRNAseq/blob/80e285b12b54c66126927363c725f57a1591a308/code/05_explore_sce/07_convert_SCE_HDF5.R#L6C1-L10C90
-load(here("/dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data/sce/sce_DLPFC_annotated/processed-data",
+load(here("/dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data",
           "sce", "sce_DLPFC.Rdata"), verbose = TRUE) 
 
 # get the manually annotated visium data
