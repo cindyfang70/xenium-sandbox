@@ -13,15 +13,20 @@ library(preprocessCore)
 # Try quantile normalization on the Xenium factors and see if that helps with 
 # detecting white matter etc. 
 
+# specify which slide and which type of labels
+slide_number <- "5548"
+label_type <- "-"
+
 
 # read the model in
 k <- 20
-nmf.mod <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
+nmf.mod <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium%snmf-model-k%s.RDS", label_type, k)))
 loadings <- nmf.mod$w
 vis.factors <- t(nmf.mod$h)
 
 # read in the sfe to project factors onto
-sfe <- readRDS(here("processed-data", "cindy", "slide-5434", "slide5434-all-samples-spe-with-banksy.RDS"))
+sfe <- readRDS(here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
+                    sprintf("slide%s-all-samples-spe-with-banksy.RDS", slide_number)))
 
 sfe_list <- lapply(unique(sfe$region_id), function(x) 
     sfe[, sfe$region_id == x])
@@ -38,7 +43,9 @@ plist_normed <- list()
 xen.fcts.normed <- list()
 for(i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
-    fct_name <- paste0(unique(sfe$region_id), sprintf("-raw-projected-NMF-factors-k%s.RDS", k))
+    fct_name <- paste0(unique(sfe$region_id), 
+                       sprintf("-raw-projected-NMF%sfactors-k%s.RDS", 
+                               label_type, k))
     proj <- readRDS(here("processed-data", "cindy", "NMF", fct_name))
     factors <- as.data.frame(t(proj))
     colnames(factors) <- paste0("NMF", 1:k)
@@ -81,7 +88,8 @@ for(i in seq_along(sfe_list)){
         cowplot::theme_cowplot()
 }
 
-pdf(here("plots", "NMF", sprintf("slide5434-NMF-k%s-factorDensityPlots.pdf",k)))
+pdf(here("plots", "NMF", sprintf("slide%s-NMF%sk%s-factorDensityPlots.pdf", 
+                                 slide_number, label_type,k)))
 for(i in seq_along(plist)){
     print(plist[[i]])
     print(plist_normed[[i]])
@@ -90,7 +98,7 @@ dev.off()
 
 # Now try to use the multinomial model to predict the layer identity
 multinom <- readRDS(here("processed-data", "cindy", "NMF", 
-                         sprintf("visium-nmf-k%s-multinom-model.RDS",k)))
+                         sprintf("visium%snmf-k%s-multinom-model.RDS",label_type,k)))
 library(nnet)
 library(MASS)
 
@@ -107,7 +115,8 @@ for (i in seq_along(sfe_list)){
     maxprobs <- unlist(lapply(1:nrow(probs), function(xx){
         max(probs[xx,])})) 
     
-    preds_name <- sprintf("predicted_layers_NMF_k%s_manual_annot_quant_norm",k)
+    preds_name <- sprintf("predicted_layers%s_NMF_k%s_manual_annot_quant_norm", 
+                          label_type, k)
     
     colData(sfe)[preds_name] <- preds
     
@@ -127,7 +136,10 @@ for (i in seq_along(sfe_list)){
 }
 
 pdf(here("plots", "NMF", 
-         sprintf("predicted-layers-visium-nmf-k%s-quant-norm-5434.pdf", k)),
-    height=10, width=25)
-print(ggpubr::ggarrange(layer_pl[[1]], layer_pl[[2]], layer_pl[[3]], ncol=3))
+         sprintf("predicted-layers-visium-nmf%sk%s-quant-norm-%s.pdf",
+                 label_type, k, slide_number)),
+    height=20, width=25)
+print(layer_pl[[1]])
+print(layer_pl[[2]])
+print(layer_pl[[3]])
 dev.off()

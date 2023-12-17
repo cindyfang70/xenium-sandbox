@@ -9,15 +9,19 @@ library(here)
 library(tidyverse)
 library(ggforce)
 
+# specify which slide and which type of labels
+slide_number <- "5548"
+label_type <- "-"
+
 # read the model in
 k <- 20
-nmf.mod <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
+nmf.mod <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium%snmf-model-k%s.RDS", label_type, k)))
 loadings <- nmf.mod$w
 vis.factors <- t(nmf.mod$h)
 
 # read in the sfe to project factors onto
-sfe <- readRDS(here("processed-data", "cindy", "slide-5434", "slide5434-all-samples-spe-with-banksy.RDS"))
-
+sfe <- readRDS(here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
+                    sprintf("slide%s-all-samples-spe-with-banksy.RDS", slide_number)))
 sfe_list <- lapply(unique(sfe$region_id), function(x) 
     sfe[, sfe$region_id == x])
 # subset the loadings matrix to only those genes that are in the Xenium panel
@@ -41,7 +45,9 @@ for (j in seq_along(sfe_list)){
     sfe <- scuttle::logNormCounts(sfe)
     proj<-project(A=logcounts(sfe), w=loadings, L1=0)
     
-    fname <- paste0(unique(sfe$region_id), sprintf("-projected-NMF-factors-k%s.RDS", k))
+    fname <-  paste0(unique(sfe$region_id), 
+                     sprintf("-raw-projected-NMF%sfactors-k%s.RDS", 
+                             label_type, k))
     saveRDS(proj, here("processed-data", "cindy", "NMF", fname))
     
     factors <- t(proj)
@@ -58,8 +64,11 @@ for (j in seq_along(sfe_list)){
     sfe_list[[j]] <- sfe
 }
 
-if(!file.exists(here("plots","NMF", sprintf("project-factors-scaled-xenium-k%s-5434.pdf", k)))){
-pdf(here("plots","NMF", sprintf("project-factors-scaled-xenium-k%s-5434.pdf", k)),
+if(!file.exists(here("plots","NMF", 
+                     sprintf("project%sfactors-scaled-xenium-k%s-%s.pdf", 
+                             label_type,k, slide_number)))){
+pdf(here("plots","NMF", sprintf("project%sfactors-scaled-xenium-k%s-%s.pdf", 
+                                label_type,k, slide_number)),
         height=15, width=45)
     for (i in 1:k){
         pls <- list()
@@ -125,9 +134,10 @@ for (i in seq_along(sfe_list)){
 }
 
 sfe_all <- do.call(cbind, sfe_list)
-saveRDS(sfe_all, here("processed-data", "cindy", "slide-5434", "slide5434-all-samples-spe-with-banksy-NMF.RDS"))
-if (!file.exists(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"))){
-pdf(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"),
+saveRDS(sfe_all, here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
+                      sprintf("slide%s-all-samples-spe-with-banksy-NMF.RDS", slide_number)))
+if (!file.exists(here("plots", "NMF", sprintf("predicted-layers-nmf-scaled-%s.pdf", slide_number)))){
+pdf(here("plots", "NMF", sprintf("predicted-layers-nmf-scaled-%s.pdf", slide_number)),
         height=15, width=35)
     for(i in seq_along(plist)){
         p <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
@@ -170,10 +180,10 @@ pdf(here("plots", "NMF", "predicted-layers-nmf-scaled-5434.pdf"),
 
 all_props <-list()
 plist <- list()
-pdf(here("plots", "NMF", "predicted-layers-visium-nmf-proportions-in-banksy-5434.pdf"))
+pdf(here("plots", "NMF", sprintf("predicted-layers-visium-nmf-proportions-in-banksy-%s.pdf", slide_number)))
 for (i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
-    #print(sprintf("-------sfe_%s-------", unique(sfe$region_id)))
+    #print(sprintf("-------sfe_%s-------", unique(sfe$region_id)))f
     
     sfe_props <- list()
     for (k in 1:length(unique(sfe$clust_M0_lam0.9_k50_res0.4))){
