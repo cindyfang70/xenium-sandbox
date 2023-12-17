@@ -26,36 +26,36 @@ load(here("/dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/proce
 
 # get the manually annotated visium data
 ehub <- ExperimentHub::ExperimentHub()
-vis_anno <- readRDS(spe_path)
+#sce <- readRDS(spe_path)
 # use layer_guess_reordered as the manual annotations
 
 # NMF on the annotated visium data
-A <- logcounts(vis_anno) # using logcounts because there are multiple datasets
+A <- logcounts(sce) # using logcounts because there are multiple datasets
 model <- RcppML::nmf(A, k = k, seed=1237)
 patterns <- t(model$h) # these are the factors
 
-rownames(model$w) <- rowData(vis_anno)$gene_name
+rownames(model$w) <- rowData(sce)$gene_name
 
 saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("snRNAseq-nmf-model-k%s", k)))
 
 colnames(patterns) <- paste0("NMF", 1:k)
-colData(vis_anno) <- cbind(colData(vis_anno), patterns)
+colData(sce) <- cbind(colData(sce), patterns)
 
-brains <- unique(vis_anno$sample_id)
-pdf(here("plots", "NMF", sprintf("all-snRNAseq-samples-NMF-k%s.pdf",k)), 
+brains <- unique(sce$sample_id)
+pdf(here("plots", "cindy", "NMF", sprintf("all-snRNAseq-samples-NMF-k%s.pdf",k)), 
     height=25, width=20)
 for(i in 1:k){
     pls<- list()
     patternName <- paste0("NMF", i)
     for (j in seq_along(brains)){
-        spe <- vis_anno[,which(vis_anno$sample_id==brains[[j]])]
+        spe <- sce[,which(sce$sample_id==brains[[j]])]
         # pls[[j]] <- make_escheR(spe) |>
         #     add_ground("layer_annotation") |>
         #     add_fill(patternName) +
         #     scale_fill_gradient(low = "white", high = "black")+
         #     ggtitle(paste(unique(spe$sample_id), patternName))
     }
-    cor.mat <- colData(vis_anno)[,c(paste0("NMF", i), 
+    cor.mat <- colData(sce)[,c(paste0("NMF", i), 
                                     "layer_annotation", "sample_id")] %>%
         as.data.frame()%>%
         pivot_longer(cols=starts_with("NMF"))

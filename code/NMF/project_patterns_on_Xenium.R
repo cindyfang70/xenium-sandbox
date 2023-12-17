@@ -15,7 +15,8 @@ label_type <- "-"
 
 # read the model in
 k <- 20
-nmf.mod <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium%snmf-model-k%s.RDS", label_type, k)))
+nmf.mod <- readRDS(here("processed-data", "cindy", "NMF", label_type, 
+                        sprintf("visium%snmf-model-k%s.RDS", label_type, k)))
 loadings <- nmf.mod$w
 vis.factors <- t(nmf.mod$h)
 

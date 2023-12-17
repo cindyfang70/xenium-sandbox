@@ -47,6 +47,9 @@ for (j in seq_along(sfe_list)){
     factors <- t(proj)
     colnames(factors) <- paste0("NMF", 1:k)
     
+    fname <- paste0(unique(sfe$region_id), sprintf("-raw-projected-NMF-bayesspace-factors-k%s.RDS", k))
+    saveRDS(proj, here("processed-data", "cindy", "NMF", fname))
+    
     # rescale the factors to match the Visium factors' range.
     xen.factors.scaled <- matrix(,ncol=k, nrow=nrow(factors))
     for(i in 1:k){
