@@ -7,4 +7,4 @@
 
 module load conda_R/4.3.x
 
-Rscript code/cindy/NMF/snRNAseq-nmf.R /dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data/sce/sce_DLPFC_annotated/se.RDS 20
+Rscript code/cindy/NMF/snRNAseq-nmf.R /dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data/sce/sce_DLPFC.Rdata 20
