@@ -10,6 +10,7 @@ library(tidyverse)
 library(ggforce)
 library(nnet)
 library(MASS)
+library(preprocessCore)
 
 ################################################################################
 # Use the trained multinomial model to predict layer identity in the Xenium data
@@ -28,7 +29,7 @@ model <- readRDS(args[[3]])
 ## predict using the multinomial model
 multinom <- readRDS(args[[4]])
 
-slide_number <- "5434"
+slide_number <- "5548"
 sfe <- readRDS(here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
                     sprintf("slide%s-all-samples-spe-with-banksy.RDS", slide_number)))
 
@@ -39,6 +40,7 @@ nmf.mod <- readRDS(args[[3]])
 ref.factors <- t(nmf.mod$h)
 colnames(ref.factors) <- paste0("NMF", 1:k)
 
+pls <- list()
 for (i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
     fname <-  paste0(unique(sfe$region_id), 
@@ -71,6 +73,34 @@ for (i in seq_along(sfe_list)){
         colnames(probs)[which.max(probs[xx,])]
     })) 
     
+    preds_name <- sprintf("preds_from_%s_NMF_k%s", model_type, k)
+    colData(sfe)[preds_name] <- preds
+    sfe_list[[i]] <- sfe
+    
+    pls[[i]] <- make_escheR(sfe, y_reverse=FALSE)%>%
+        add_ground(preds_name)
+    
 }
 
+# plot each layer individually
 
+pdf(here("plots", "NMF", model_type, sprintf("predicted_layers_%s_k%s.pdf", 
+                                             model_type, k)), height=25, width=15)
+for (i in seq_along(sfe_list)){
+    sfe <- sfe_list[[i]]
+    layers <- paste0("L", 1:6)
+    layers <- c(layers, "WM")
+    
+    layer_plts <- list()
+    for (l in 1:length(layers)){
+        sfe$isLayer <- grepl(layers[[l]], colData(sfe)[[preds_name]])
+        layer_plts[[l]] <- make_escheR(sfe, y_reverse=FALSE)%>%
+            add_fill("isLayer")+
+            scale_fill_manual(values=c("TRUE"="red", "FALSE"="grey"))+
+            ggtitle(paste(unique(sfe$region_id), layers[[l]]))
+    }
+    
+    layer_plts[[length(layers) + 1]] <- pls[[i]]
+    do.call(gridExtra::grid.arrange, c(layer_plts, ncol=2))
+}
+dev.off()
