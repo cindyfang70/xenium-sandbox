@@ -83,7 +83,7 @@ pdf(here("plots", "NMF", model_type, sprintf("predicted_layers_scale_by_d_%s_k%s
                                              model_type, k, slide_number)), height=25, width=15)
 for (i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
-    layers <- paste0("L", 1:6)
+    layers <- 1:6
     layers <- c(layers, "WM")
     
     layer_plts <- list()
