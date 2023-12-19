@@ -8,35 +8,45 @@ library(escheR)
 library(here)
 library(tidyverse)
 library(ggforce)
+################################################################################
 # Use RcppML::nmf to perform non-negative matrix factorization on the manually
 # annotated Visium dataset to get a loadings matrix and a factors matrix with 
 # k factors. Plot each of those k factors as well as the layer labels to see
 # if any of them are associated with a particular layer.
+################################################################################
+
+args <- commandArgs(trailingOnly = TRUE)
+data_type <- args[[1]]
 
 # get the manually annotated visium data
 ehub <- ExperimentHub::ExperimentHub()
-vis_anno <- fetch_data(type = "spe", eh = ehub)
+vis_anno <- fetch_data(type = data_type, eh = ehub)
 # use layer_guess_reordered as the manual annotations
+if(data_type=="spe"){ # use manual annotations
+    layer_labs <- "layer_guess_reordered"
+    model_type <- "manual_annot"
+}else if(data_type=="spatialDLPFC_Visium"){
+    layer_labs <- "BayesSpace_harmony_09"
+    model_type <- "bayesspace"
+}
 
 # NMF on the annotated visium data
-k <- 20
+k <- as.numeric(args[[2]])
 A <- logcounts(vis_anno) # using logcounts because there are multiple datasets
 model <- RcppML::nmf(A, k = k, seed=1237)
 patterns <- t(model$h) # these are the factors
 
 rownames(model$w) <- rowData(vis_anno)$gene_name
 
-plot(summary(model, 
-             group_by = unique(vis_anno$sample_id), 
-             stat = "mean"))
-
-saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
+saveRDS(model, here("processed-data", "cindy", "NMF", model_type, 
+                    sprintf("%s-visium-nmf-model-k%s", model_type, k)))
 
 colnames(patterns) <- paste0("NMF", 1:k)
 colData(vis_anno) <- cbind(colData(vis_anno), patterns)
 
 brains <- unique(vis_anno$sample_id)
-pdf(here("plots", "NMF", sprintf("all-visium-samples-NMF-k%s.pdf",k)), 
+pdf(here("plots", "cindy", "NMF", model_type, 
+         sprintf("%s-all-visium-samples-NMF-k%s.pdf", model_type,k)), 
     height=25, width=20)
 for(i in 1:k){
     pls<- list()
@@ -44,18 +54,18 @@ for(i in 1:k){
     for (j in seq_along(brains)){
         spe <- vis_anno[,which(vis_anno$sample_id==brains[[j]])]
         pls[[j]] <- make_escheR(spe) |>
-            add_ground("layer_guess_reordered") |>
+            add_ground(layer_labs) |>
             add_fill(patternName) +
             scale_fill_gradient(low = "white", high = "black")+
             ggtitle(paste(unique(spe$sample_id), patternName))
     }
     cor.mat <- colData(vis_anno)[,c(paste0("NMF", i), 
-                               "layer_guess_reordered", "sample_id")] %>%
+                               layer_labs, "sample_id")] %>%
         as.data.frame()%>%
         pivot_longer(cols=starts_with("NMF"))
-    bp <- ggplot(transform(cor.mat, name=factor(name, levels=colnames(patterns))),
-                 aes(x=layer_guess_reordered, y=value, 
-                     fill=layer_guess_reordered))+
+    bp <- ggplot(transform(cor.mat, name=factor("name", levels=colnames(patterns))),
+                 aes_string(x=layer_labs, y="value", 
+                     fill=layer_labs))+
         geom_boxplot()+
         facet_wrap(~sample_id, scales="free")+
         scale_y_log10()+
@@ -71,12 +81,12 @@ for(i in 1:k){
 dev.off() #need to change layer_guess_reordered to be more general
 
 # Compute correlation between NMF factors and layer identities 
-labels <- unique(colData(vis_anno)[["layer_guess_reordered"]])
+labels <- unique(colData(vis_anno)[[layer_labs]])
 n_labels <-length(labels)
 factors.ind <- matrix(,nrow=dim(vis_anno)[[2]], ncol=n_labels)
 for (i in 1:n_labels){
     label <- labels[[i]]
-    factors.ind[,i] <- as.integer(colData(vis_anno)[["layer_guess_reordered"]]== label)
+    factors.ind[,i] <- as.integer(colData(vis_anno)[[layer_labs]]== label)
 }
 
 colnames(factors.ind) <- labels
