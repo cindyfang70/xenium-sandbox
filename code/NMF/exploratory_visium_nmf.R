@@ -26,6 +26,10 @@ patterns <- t(model$h) # these are the factors
 
 rownames(model$w) <- rowData(vis_anno)$gene_name
 
+plot(summary(model, 
+             group_by = unique(vis_anno$sample_id), 
+             stat = "mean"))
+
 saveRDS(model, here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s", k)))
 
 colnames(patterns) <- paste0("NMF", 1:k)
@@ -64,29 +68,54 @@ for(i in 1:k){
     rm(pls)
     gc()
 }
+dev.off() #need to change layer_guess_reordered to be more general
+
+# Compute correlation between NMF factors and layer identities 
+labels <- unique(colData(vis_anno)[["layer_guess_reordered"]])
+n_labels <-length(labels)
+factors.ind <- matrix(,nrow=dim(vis_anno)[[2]], ncol=n_labels)
+for (i in 1:n_labels){
+    label <- labels[[i]]
+    factors.ind[,i] <- as.integer(colData(vis_anno)[["layer_guess_reordered"]]== label)
+}
+
+colnames(factors.ind) <- labels
+factors.ind <- as.data.frame(factors.ind)
+
+cor.mat <- cbind(patterns, factors.ind)
+cor.mat$`NA` <- NULL
+
+M <- cor(cor.mat, use="complete.obs")
+M <- M[grepl("^[[:digit:]]+$", rownames(M)), !grepl("^[[:digit:]]+$", colnames(M))]
+
+# compute the correlation between NMF factors and the brain IDs
+brs <- unique(colData(vis_anno)[["sample_id"]])
+n_brs <- length(brs)
+brs.ind <- matrix(, nrow=ncol(vis_anno), ncol=n_brs)
+
+for (i in 1:n_brs){
+    br <- brs[[i]]
+    brs.ind[,i] <- as.integer(colData(vis_anno)[["sample_id"]]==br)
+}
+
+colnames(brs.ind) <- brs
+brs.ind <- as.data.frame(brs.ind)
+
+colnames(patterns) <- paste0("NMF", 1:k)
+brs.cor.mat <- cbind(patterns, brs.ind)
+
+brs.M <- cor(brs.cor.mat, use="complete.obs")
+brs.M <- brs.M[grepl("NMF", rownames(brs.M)), grepl("^[[:digit:]]+$", colnames(brs.M))]
+
+
+fname <- sprintf("%s_NMF_layer_corr_plot_k%s.pdf", model_type, k)
+pdf(here("plots", "NMF", model_type, fname))
+corrplot::corrplot(M)
+corrplot::corrplot(brs.M)
 dev.off()
 
-
-    
-# https://rdrr.io/bioc/CoGAPS/man/calcCoGAPSStat-methods.html
-
+# design$isWM <- design$layer_guess_reordered=="WM"
 # 
-# recon <- model$w %*% model$h
-# 
-# #colData(x)<-cbind(colData(x),patterns)
-# 
-# rownames(model$w) <- rowData(vis_anno)$gene_name
-# 
-# proj<-projectR(
-#     data=as.matrix(counts(x)),
-#     loadings=as.matrix(model$w),
-#     full = FALSE,
-#     family = "gaussianff"
-# )
-# 
-# dim(proj)
-design$isWM <- design$layer_guess_reordered=="WM"
-
-ggplot(as.data.frame(design), aes(x=isWM, y=NMF20))+
-    geom_boxplot()+
-    scale_y_log10()
+# ggplot(as.data.frame(design), aes(x=isWM, y=NMF20))+
+#     geom_boxplot()+
+#     scale_y_log10()
