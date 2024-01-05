@@ -1,7 +1,6 @@
 library(RcppML)
 library(Matrix)
 library(Voyager)
-library(CoGAPS)
 library(projectR)
 library(spatialLIBD)
 library(escheR)
@@ -39,7 +38,6 @@ if(model_type=="snRNA-seq"){
     layer_name <- "BayesSpace_harmony_09"
 }
 
-#model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
 
 model <- readRDS(args[[3]])
 factors <- t(model$h)

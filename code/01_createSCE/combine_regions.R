@@ -20,21 +20,18 @@ args <- commandArgs(trailingOnly=TRUE)
 print(args)
 
 sfes <- lapply(args, readRDS)
-# remove the rowData because they don't match
-# sfes <- lapply(sfes, function(x){rowData(x)$means <- NULL
-# rowData(x)$vars <- NULL
-# rowData(x)$cv2 <- NULL
-# return(x)})
 
 # convert to SPE because cbind is super annoying for SFEs
-sfes <- lapply(sfes, SFEtoSPE)
+spes <- lapply(sfes, SFEtoSPE)
 
-sfe.all <- do.call(cbind, sfes)
-sfe.all$Sample <- "sample01"
+sfe.all <- do.call(cbind, spes)
 print(sfe.all)
-sfe.all$donor_id <- lapply(strsplit(sfe.all$region_id, split="_"), "[", 1)[[1]]
+sfe.all$donor_id <- unlist(lapply(strsplit(sfe.all$region_id, 
+                                           split="_"), "[", 1))
 
+print(rowData(sfes[[1]])$ID)
 rowData(sfe.all)$Symbol <- rownames(sfe.all)
 rowData(sfe.all)$ID <- rowData(sfes[[1]])$ID
 
+print(rowData(sfe.all))
 saveRDS(sfe.all, here("processed-data", "cindy", "sfe-all.RDS"))

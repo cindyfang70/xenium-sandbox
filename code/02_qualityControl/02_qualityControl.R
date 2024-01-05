@@ -60,6 +60,27 @@ br6471_p_filt <- filterCells(br6471_p)
 br6522_p_filt <- filterCells(br6522_p)
 br8667_m_filt <- filterCells(br8667_m)
 
+cols_use <- names(colData(br8667_m))[str_detect(names(colData(sfe)), "_percent$")]
+cols_use <- cols_use[!grepl("subsets_anti_percent", cols_use)]
+
+pdf(here("plots", "02_qualityControl", "post_filtering_histograms-5434.pdf"), height=5, width=12)
+plotColDataHistogram(br6471_p_filt, cols_use, bins = 100, ncol = 3)+ 
+    scale_x_log10() +
+    annotation_logticks(sides = "b")+
+    ggtitle(unique(br6471_p$region_id))+
+    xlab("percentage of total counts")
+plotColDataHistogram(br6522_p_filt, cols_use, bins = 100, ncol = 3)+ 
+    scale_x_log10() +
+    annotation_logticks(sides = "b")+
+    ggtitle(unique(br6522_p$region_id))+
+    xlab("percentage of total counts")
+plotColDataHistogram(br8667_m_filt, cols_use, bins = 100, ncol = 3)+ 
+    scale_x_log10() +
+    annotation_logticks(sides = "b")+
+    ggtitle(unique(br8667_m$region_id))+
+    xlab("percentage of total counts")
+dev.off()
+
 # p1 <- plotColData(br6471_p_filt, y="subsets_any_neg_sum",
 #             colour_by="keep",
 #             show_median=TRUE,

@@ -85,8 +85,10 @@ lp <- layer_stat_cor_plot(cor_layer, max = max(cor_layer))
 
 
 clustName <- "clust_M1_lam0.9_k50_res0.4"
+
+sfe$Banksy <- colData(sfe)[[clustName]]
 # plot layers with correlation
-colourCount = length(unique((colData(sfe)[[clustName]])))
+colourCount = length(unique(sfe$Banksy))
 getPalette = colorRampPalette(brewer.pal(12, "Set3"))
 
 plist <- list()
@@ -94,12 +96,29 @@ for (i in 1:length(unique(sfe$region_id))){
     region <- unique(sfe$region_id)[[i]]
     sub.sfe <- sfe[,sfe$region_id==region]
     
-    p <- make_escheR(sub.sfe, y_reverse=FALSE) %>%
-        add_fill(var=clustName)+
-        scale_fill_manual(values=getPalette(colourCount))+
-        ggtitle(region)
+    sub.sfe$isWM <- sub.sfe$Banksy=="Banksy5" | sub.sfe$Banksy=="Banksy9"
+    
+    sub.sfe$counts_MOBP <- counts(sub.sfe)[which(rownames(sub.sfe)=="MOBP"),]
+    p <- make_escheR(sub.sfe, y_reverse=FALSE, stroke=0.5) %>%
+        #add_ground(var="isWM") %>%
+        add_fill(var="counts_MOBP", point_size=1)+
+        #scale_fill_manual(values=getPalette(colourCount))+
+        scale_fill_gradient(low = "white", high = "black")+
+        ggtitle(region)+
+        theme(plot.title=element_text(size=20),
+              legend.text=element_text(size=20),
+              legend.title = element_text(size=20))
     plist[[i]] <- p
 }
 
 plist[[4]] <- lp
-do.call(gridExtra::grid.arrange, c(plist,  ncol=3))
+pdf(here("slide-5434-banksy-wholeSlide.pdf"), width=15, height=20)
+do.call(gridExtra::grid.arrange, c(plist,  ncol=1))
+dev.off()
+#Annotate
+anno <- annotate_registered_clusters(
+    cor_stats_layer = cor_layer,
+    confidence_threshold = 0.25,
+    cutoff_merge_ratio = 0.25
+)
+

@@ -1,11 +1,16 @@
-library(SpatialFeatureExperiment)
-library(SingleCellExperiment)
-library(Banksy)
+suppressPackageStartupMessages({
+    library(SpatialFeatureExperiment)
+    library(SingleCellExperiment)
+    library(Banksy)
+    library(here)
+    library(escheR)
+    library(ggplot2)
+})
 
 # Run the Banksy multisample workflow:
 # https://github.com/prabhakarlab/Banksy/blob/bioc/vignettes/multi-sample.Rmd
 
-source(here("code","01_createSCE","xenium_helpers.R"))
+source(here("code","cindy", "01_createSCE","xenium_helpers.R"))
 
 # sfe.paths1 <- system("ls processed-data/cindy/slide-5434", intern=TRUE)
 # sfe.paths1 <- sfe.paths1[grepl("*filt.RDS", sfe.paths1)]
@@ -14,12 +19,15 @@ source(here("code","01_createSCE","xenium_helpers.R"))
 args <- commandArgs(trailingOnly = TRUE)
 print(args)
 # get the SFE paths
-sfe.paths <- args[1:6]
+sfe.paths <- args[1:3]
 
 # get the Banksy params
-lambda <- args[[7]]
-k_geom <- args[[8]]
-res <- args[[9]]
+lambda <- as.numeric(args[[4]])
+k_geom <- as.numeric(args[[5]])
+res <- as.numeric(args[[6]])
+
+# get the slide number
+slide <- args[[7]]
 
 # read in the individual sfes and 
 aname <- "normcounts"
@@ -78,12 +86,12 @@ for (i in seq_along(spe_list)){
 }
 
 pdf(here("plots", "cindy", "05_segmentRegions", "banksy",
-         sprintf("multisample-banksy-plots-res%s.pdf", res)), height=15, width=20)
+         sprintf("slide%s-multisample-banksy-plots-res%s.pdf", slide, res)), height=15, width=20)
 do.call(gridExtra::grid.arrange, c(plist, ncol=2))
 dev.off()
 
 saveRDS(spe_joint, here("processed-data", "cindy", 
-                        "all-samples-spe-with-banksy.RDS"))
+                        sprintf("slide%s-all-samples-spe-with-banksy.RDS",slide)))
 
 ###############################################
 # set.seed(1015)

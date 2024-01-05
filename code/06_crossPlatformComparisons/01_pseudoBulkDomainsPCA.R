@@ -100,6 +100,6 @@ ComplexHeatmap::Heatmap(m, name="Pearson Cor", column_title=
                             paste(unique(sfe$region_id), 
                                   spe.clustName, "vs", 
                                   sfe.clustName,
-                                  sep=" "))
+                                  sep=" ")) # TODO: fix colour scale of heatmap to make it consistent across all samples
 dev.off()
 # need to figure out what layers the bayesspace labels correspond to

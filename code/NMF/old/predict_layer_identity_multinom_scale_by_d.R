@@ -48,20 +48,15 @@ for (i in seq_along(sfe_list)){
                              model_type, k))
     
     proj <- readRDS(here("processed-data", "cindy", "NMF", model_type,
-                            fname))
+                         fname))
     
     factors <- t(proj)
     colnames(factors) <- paste0("NMF", 1:k)
     
     
-    # quantile normalize the factors
-    xen.factors.normed <- matrix(,ncol=k, nrow=nrow(factors))
-    for (j in 1:k){
-        ref <- ref.factors[,j]
-        xen <- factors[,j]
-        xen.factors.normed[,j] <- normalize.quantiles.use.target(
-            x=as.matrix(xen), target=ref)
-    }
+    # scale the factors by model$d from NMF 
+    xen.factors.normed <- factors/model$d
+
     xen.factors.normed <- as.data.frame(xen.factors.normed)
     colnames(xen.factors.normed) <- paste0("NMF", 1:k)
     
@@ -84,11 +79,11 @@ for (i in seq_along(sfe_list)){
 
 # plot each layer individually
 
-pdf(here("plots", "NMF", model_type, sprintf("predicted_layers_%s_k%s_%s.pdf", 
-                        model_type, k, slide_number)), height=25, width=15)
+pdf(here("plots", "NMF", model_type, sprintf("predicted_layers_scale_by_d_%s_k%s_%s.pdf", 
+                                             model_type, k, slide_number)), height=25, width=15)
 for (i in seq_along(sfe_list)){
     sfe <- sfe_list[[i]]
-    layers <- paste0(1:6)
+    layers <- paste0("L", 1:6)
     layers <- c(layers, "WM")
     
     layer_plts <- list()
