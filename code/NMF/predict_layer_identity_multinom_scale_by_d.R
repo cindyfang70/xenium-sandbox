@@ -29,7 +29,11 @@ model <- readRDS(args[[3]])
 ## predict using the multinomial model
 multinom <- readRDS(args[[4]])
 
+<<<<<<< HEAD
 slide_number <- "5548"
+=======
+slide_number <- "5434"
+>>>>>>> 08884bc83a2e425580b1e185fda89223c2592cfe
 sfe <- readRDS(here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
                     sprintf("slide%s-all-samples-spe-with-banksy.RDS", slide_number)))
 
