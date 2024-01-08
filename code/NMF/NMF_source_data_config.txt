@@ -1,0 +1,4 @@
+ArrayTaskID   model_type        k
+1             bayesspace        100
+2             manual_annot      100
+
