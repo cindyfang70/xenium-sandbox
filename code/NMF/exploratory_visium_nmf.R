@@ -41,7 +41,7 @@ patterns <- t(model$h) # these are the factors
 rownames(model$w) <- rowData(vis_anno)$gene_name
 
 saveRDS(model, here("processed-data", "cindy", "NMF", model_type, 
-                    sprintf("%s-visium-nmf-model-k%s", model_type, k)))
+                    sprintf("%s-visium-nmf-model-k%s.RDS", model_type, k)))
 
 colnames(patterns) <- paste0("NMF", 1:k)
 colData(vis_anno) <- cbind(colData(vis_anno), patterns)
@@ -147,10 +147,5 @@ dev.off()
 
 cors <- list(layer_cor=M, sample_cor=brs.M)
 saveRDS(cors, here("processed-data", "cindy", "NMF", model_type,
-                    sprintf("%s-nmf-correlations-k%s", model_type, k)))
+                    sprintf("%s-nmf-correlations-k%s.RDS", model_type, k)))
 
-# design$isWM <- design$layer_guess_reordered=="WM"
-# 
-# ggplot(as.data.frame(design), aes(x=isWM, y=NMF20))+
-#     geom_boxplot()+
-#     scale_y_log10()
