@@ -18,14 +18,13 @@ args <- c("snRNA-seq", "20",
 
 # read in the model
 model_type <- args[[1]]
-k <- args[[2]]
+k <- as.numeric(args[[2]])
+ # need to find the path in the script rather than as input
+slide_number <- args[[3]]
 
 # get the manually annotated Visium data
 ehub <- ExperimentHub::ExperimentHub()
 if(model_type=="snRNA-seq"){
-    # load(here("/dcs04/lieber/lcolladotor/deconvolution_LIBD4030/DLPFC_snRNAseq/processed-data",
-    #           "sce", "sce_DLPFC.Rdata"), verbose = TRUE) 
-    
     load(here("processed-data", "cindy", "snRNA-seq", "sce_DLPFC.Rdata"))
     layer_name <- "layer_annotation"
 }else if(model_type=="manual_annot"){
@@ -36,17 +35,12 @@ if(model_type=="snRNA-seq"){
     layer_name <- "BayesSpace_harmony_09"
 }
 
-#model <- readRDS(here("processed-data", "cindy", "NMF", sprintf("visium-nmf-model-k%s.RDS", k)))
 
-
-
-# specify which slide and which type of labels
-slide_number <- args[[4]]
-#model_type <- "snRNA-seq"
 
 # read the model in
-k <- 20
-nmf.mod <- readRDS(args[[3]])
+nmf.path <- here("processed_data", "cindy", "NMF", model_type,
+                 sprintf("%s-nmf-model-k%s.RDS", model_type, k))
+nmf.mod <- readRDS(nmf.path)
 loadings <- nmf.mod$w
 vis.factors <- t(nmf.mod$h)
 
@@ -167,86 +161,86 @@ pdf(here("plots","NMF", sprintf("project%sfactors-scaled-xenium-k%s-%s.pdf",
 # sfe_all <- do.call(cbind, sfe_list)
 # saveRDS(sfe_all, here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
 #                       sprintf("slide%s-all-samples-spe-with-banksy-NMF.RDS", slide_number)))
-if (!file.exists(here("plots", "NMF", sprintf("predicted-layers-nmf-scaled-%s.pdf", slide_number)))){
-pdf(here("plots", "NMF", sprintf("predicted-layers-nmf-scaled-%s.pdf", slide_number)),
-        height=15, width=35)
-    for(i in seq_along(plist)){
-        p <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
-            add_ground("clust_M0_lam0.9_k50_res0.4")+
-            ggtitle(unique(sfe_list[[i]]$region_id))+
-            theme(legend.title = element_text(size=30), 
-                  legend.text = element_text(size=25),
-                  plot.title = element_text(size=40))+
-            guides(color = guide_legend(override.aes = list(stroke = 4)))
-        
-        p2 <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
-            add_ground(preds_name)+
-            theme(legend.title = element_text(size=30), 
-                  legend.text = element_text(size=25))+
-            guides(color = guide_legend(override.aes = list(stroke = 4)))
-        
-        #sfe_list[[i]]$prob_less_than_80 <- sfe_list[[i]]$max_probs < 0.8
-        
-        p4 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)%>%
-            add_fill("max_probs")+
-            scale_fill_viridis_c(limits=c(0, 1))
-            theme(legend.title = element_text(size=30), 
-                  legend.text = element_text(size=25))+
-            ggtitle(unique(sfe_list[[i]]$region_id))
-        
-        p3 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
-            add_ground("clust_M0_lam0.9_k50_res0.4", stroke=3) |>
-            add_fill(preds_name, point_size=1)+
-            theme(legend.title = element_text(size=30), 
-                  legend.text = element_text(size=25))+
-            guides(color = guide_legend(override.aes = list(stroke = 4)),
-                   fill=guide_legend(override.aes=list(size=4)))
-        # 
-        print(ggpubr::ggarrange(plist[[i]], p ,p2, p3, p4, ncol=2))
-    }
-    dev.off()
-    
-}
-
-
-all_props <-list()
-plist <- list()
-pdf(here("plots", "NMF", sprintf("predicted-layers-visium-nmf-proportions-in-banksy-%s.pdf", slide_number)))
-for (i in seq_along(sfe_list)){
-    sfe <- sfe_list[[i]]
-    #print(sprintf("-------sfe_%s-------", unique(sfe$region_id)))f
-    
-    sfe_props <- list()
-    for (k in 1:length(unique(sfe$clust_M0_lam0.9_k50_res0.4))){
-        clust <- unique(sfe$clust_M0_lam0.9_k50_res0.4)[[k]]
-        clustk <- sfe[,which(sfe$clust_M0_lam0.9_k50_res0.4 == k)]
-        #print(sprintf("-------clust%s-------", clust))
-        props_k <- round(table(colData(clustk)[preds_name])/
-                  sum(table(colData(clustk)[preds_name])),3)
-        #print(props_k)
-        props_k <- as.data.frame(props_k)
-        colnames(props_k)[[1]] <- "Layer"
-        props_k$clust <- clust
-        props_k$sfe <- unique(sfe$region_id)
-        sfe_props[[k]] <- props_k
-        names(sfe_props)[[k]] <- clust
-    }
-    all_props[[i]] <- do.call(rbind, sfe_props)
-    
-    
-    p <- ggplot(all_props[[i]], aes(x=Layer, y=Freq, fill=Layer))+
-        geom_bar(stat="identity")+
-        facet_wrap(~clust, scales="free_y")+
-        ylab("Proportion")+
-        xlab("Predicted label from NMF")+
-        ggtitle(unique(sfe$region_id))+
-        cowplot::theme_cowplot()+
-        theme(axis.text.x = element_text(angle=90),
-              legend.position="none")
-    plist[[i]] <- p
-    print(p)
-}
-dev.off()
+# if (!file.exists(here("plots", "NMF", sprintf("predicted-layers-nmf-scaled-%s.pdf", slide_number)))){
+# pdf(here("plots", "NMF", sprintf("predicted-layers-nmf-scaled-%s.pdf", slide_number)),
+#         height=15, width=35)
+#     for(i in seq_along(plist)){
+#         p <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
+#             add_ground("clust_M0_lam0.9_k50_res0.4")+
+#             ggtitle(unique(sfe_list[[i]]$region_id))+
+#             theme(legend.title = element_text(size=30), 
+#                   legend.text = element_text(size=25),
+#                   plot.title = element_text(size=40))+
+#             guides(color = guide_legend(override.aes = list(stroke = 4)))
+#         
+#         p2 <-  make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
+#             add_ground(preds_name)+
+#             theme(legend.title = element_text(size=30), 
+#                   legend.text = element_text(size=25))+
+#             guides(color = guide_legend(override.aes = list(stroke = 4)))
+#         
+#         #sfe_list[[i]]$prob_less_than_80 <- sfe_list[[i]]$max_probs < 0.8
+#         
+#         p4 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)%>%
+#             add_fill("max_probs")+
+#             scale_fill_viridis_c(limits=c(0, 1))
+#             theme(legend.title = element_text(size=30), 
+#                   legend.text = element_text(size=25))+
+#             ggtitle(unique(sfe_list[[i]]$region_id))
+#         
+#         p3 <- make_escheR(sfe_list[[i]], y_reverse=FALSE)|>
+#             add_ground("clust_M0_lam0.9_k50_res0.4", stroke=3) |>
+#             add_fill(preds_name, point_size=1)+
+#             theme(legend.title = element_text(size=30), 
+#                   legend.text = element_text(size=25))+
+#             guides(color = guide_legend(override.aes = list(stroke = 4)),
+#                    fill=guide_legend(override.aes=list(size=4)))
+#         # 
+#         print(ggpubr::ggarrange(plist[[i]], p ,p2, p3, p4, ncol=2))
+#     }
+#     dev.off()
+#     
+# }
+# 
+# 
+# all_props <-list()
+# plist <- list()
+# pdf(here("plots", "NMF", sprintf("predicted-layers-visium-nmf-proportions-in-banksy-%s.pdf", slide_number)))
+# for (i in seq_along(sfe_list)){
+#     sfe <- sfe_list[[i]]
+#     #print(sprintf("-------sfe_%s-------", unique(sfe$region_id)))f
+#     
+#     sfe_props <- list()
+#     for (k in 1:length(unique(sfe$clust_M0_lam0.9_k50_res0.4))){
+#         clust <- unique(sfe$clust_M0_lam0.9_k50_res0.4)[[k]]
+#         clustk <- sfe[,which(sfe$clust_M0_lam0.9_k50_res0.4 == k)]
+#         #print(sprintf("-------clust%s-------", clust))
+#         props_k <- round(table(colData(clustk)[preds_name])/
+#                   sum(table(colData(clustk)[preds_name])),3)
+#         #print(props_k)
+#         props_k <- as.data.frame(props_k)
+#         colnames(props_k)[[1]] <- "Layer"
+#         props_k$clust <- clust
+#         props_k$sfe <- unique(sfe$region_id)
+#         sfe_props[[k]] <- props_k
+#         names(sfe_props)[[k]] <- clust
+#     }
+#     all_props[[i]] <- do.call(rbind, sfe_props)
+#     
+#     
+#     p <- ggplot(all_props[[i]], aes(x=Layer, y=Freq, fill=Layer))+
+#         geom_bar(stat="identity")+
+#         facet_wrap(~clust, scales="free_y")+
+#         ylab("Proportion")+
+#         xlab("Predicted label from NMF")+
+#         ggtitle(unique(sfe$region_id))+
+#         cowplot::theme_cowplot()+
+#         theme(axis.text.x = element_text(angle=90),
+#               legend.position="none")
+#     plist[[i]] <- p
+#     print(p)
+# }
+# dev.off()
 
 # all_props_df <- do.call(rbind, all_props)
 # 
