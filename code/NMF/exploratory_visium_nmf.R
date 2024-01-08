@@ -18,17 +18,18 @@ library(ggforce)
 args <- commandArgs(trailingOnly = TRUE)
 data_type <- args[[1]]
 
+
+if(model_type == "manual_annot"){ # use manual annotations
+    layer_labs <- "layer_guess_reordered"
+    data_type <- "spe"
+}else if(model_type == "bayesspace"){
+    layer_labs <- "BayesSpace_harmony_09"
+    data_type=="spatialDLPFC_Visium"
+}
+
 # get the manually annotated visium data
 ehub <- ExperimentHub::ExperimentHub()
 vis_anno <- fetch_data(type = data_type, eh = ehub)
-# use layer_guess_reordered as the manual annotations
-if(data_type=="spe"){ # use manual annotations
-    layer_labs <- "layer_guess_reordered"
-    model_type <- "manual_annot"
-}else if(data_type=="spatialDLPFC_Visium"){
-    layer_labs <- "BayesSpace_harmony_09"
-    model_type <- "bayesspace"
-}
 
 # NMF on the annotated visium data
 k <- as.numeric(args[[2]])
