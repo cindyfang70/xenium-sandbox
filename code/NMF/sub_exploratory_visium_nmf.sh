@@ -3,6 +3,12 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=20G
+#SBATCH --array=1-2
+
+config=code/cindy/NMF/NMF_source_data_config.txt
 module load conda_R/4.3.x
 
-Rscript code/cindy/NMF/exploratory_visium_nmf.R spatialDLPFC_Visium 100
+model_type=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $2}' $config)
+k=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $3}' $config)
+
+Rscript code/cindy/NMF/exploratory_visium_nmf.R ${model_type} ${k}
