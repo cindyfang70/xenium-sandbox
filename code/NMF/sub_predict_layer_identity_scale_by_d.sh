@@ -11,4 +11,4 @@ module load conda_R/4.3.x
 model_type=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $2}' $config)
 k=$(awk -v ArrayTaskID=$SLURM_ARRAY_TASK_ID '$1==ArrayTaskID {print $3}' $config)
 
-Rscript code/cindy/NMF/04_predict_layer_identity_multinom_scale_by_d.R ${model_type} ${k}
+Rscript code/cindy/NMF/05_predict_layer_identity_multinom_scale_by_d.R ${model_type} ${k}

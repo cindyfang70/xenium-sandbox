@@ -14,6 +14,7 @@ library(nnet)
 # dataset. See example here from Yi Wang: 
 # https://www.dropbox.com/scl/fi/4m2y8flc1d06z6prkjnjy/shared_example_glm.r?rlkey=34t4q0ruyjq42uldmnlmuxk0n&dl=0
 
+args <- c("bayesspace", "100")
 # read in the model
 model_type <- args[[1]]
 k <- args[[2]]
@@ -32,8 +33,8 @@ if(model_type=="snRNA-seq"){
 }
 
 # Read in the NMF model
-nmf.path <- here("processed_data", "cindy", "NMF", model_type,
-                 sprintf("%s-nmf-model-k%s.RDS", model_type, k))
+nmf.path <- here("processed-data", "cindy", "NMF", model_type,
+                 sprintf("%s-visium-nmf-model-k%s.RDS", model_type, k))
 nmf.mod <- readRDS(nmf.path)
 factors <- t(nmf.mod$h)
 colnames(factors) <- paste0("NMF", 1:k)
@@ -69,3 +70,4 @@ acc = mean(pred==labs,na.rm=TRUE)
 acc 
 
 saveRDS(mod, here("processed-data", "cindy", "NMF", model_type, sprintf("%s-nmf-k%s-multinom-model.RDS",model_type, k)))
+ 

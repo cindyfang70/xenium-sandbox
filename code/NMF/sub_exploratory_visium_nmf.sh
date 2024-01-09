@@ -2,7 +2,7 @@
 #SBATCH --job-name=NMF_SNRNA
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem-per-cpu=20G
+#SBATCH --mem-per-cpu=10G
 #SBATCH --array=1-2
 
 config=code/cindy/NMF/NMF_source_data_config.txt
