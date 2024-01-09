@@ -16,7 +16,7 @@ library(ggforce)
 ################################################################################
 
 args <- commandArgs(trailingOnly = TRUE)
-data_type <- args[[1]]
+model_type <- args[[1]]
 
 
 if(model_type == "manual_annot"){ # use manual annotations
@@ -24,7 +24,7 @@ if(model_type == "manual_annot"){ # use manual annotations
     data_type <- "spe"
 }else if(model_type == "bayesspace"){
     layer_labs <- "BayesSpace_harmony_09"
-    data_type=="spatialDLPFC_Visium"
+    data_type <- "spatialDLPFC_Visium"
 }
 
 # get the manually annotated visium data
@@ -131,6 +131,25 @@ if (data_type=="spe"){
 print(brs)
 print(head(brs.M))
 
+# pseudobulk to get an expression profile for each domain label and compute the
+# correlation between each NMF factor and the domain expression profile.
+
+summed <- scuttle::aggregateAcrossCells(vis_anno, 
+                            ids=colData(vis_anno)[c(layer_labs, "sample_id")])
+summed$layer_donor <- paste(colData(summed)[[layer_labs]], 
+                            summed$sample_id, sep="_")
+
+expr_profiles <- as.data.frame(as.matrix(counts(summed)))
+colnames(expr_profiles) <- summed$layer_donor
+
+expr_prof_cor_mat <- cbind(patterns, expr_profiles)
+exprs.M <- cor(expr_prof_cor_mat, use="complete.obs")
+
+exprs.M <- exprs.M[grepl("NMF", rownames(exprs.M)), 
+                   !(grepl("NMF", colnames(exprs.M)))]
+print(head(exprs.M))
+
+
 col <- circlize::colorRamp2(seq(-1, 1, length = 3), c("blue", "#EEEEEE", "red"))
 fname <- sprintf("%s_NMF_layer_corr_plot_k%s.pdf", model_type, k)
 pdf(here("plots", "cindy", "NMF", model_type, fname), height=30, width=30)
@@ -139,6 +158,12 @@ ComplexHeatmap::Heatmap(t(as.matrix(M)), col=col,
                         column_names_gp = grid::gpar(fontsize = 25),
                         width = ncol(t(as.matrix(M)))*unit(6.5, "mm"), 
                         height = nrow(t(as.matrix(M)))*unit(20, "mm"))
+
+ComplexHeatmap::Heatmap(t(as.matrix(exprs.M)), col=col,
+                        row_names_gp = grid::gpar(fontsize = 30),
+                        column_names_gp = grid::gpar(fontsize = 25),
+                        width = ncol(t(as.matrix(exprs.M)))*unit(6.5, "mm"), 
+                        height = nrow(t(as.matrix(exprs.M)))*unit(20, "mm"))
 ComplexHeatmap::Heatmap(t(as.matrix(brs.M)), col=col,
                         row_names_gp = grid::gpar(fontsize = 30),
                         column_names_gp = grid::gpar(fontsize = 25),
@@ -146,7 +171,7 @@ ComplexHeatmap::Heatmap(t(as.matrix(brs.M)), col=col,
                         height = nrow(t(as.matrix(brs.M)))*unit(20, "mm"))
 dev.off()
 
-cors <- list(layer_cor=M, sample_cor=brs.M)
+cors <- list(layer_cor=M, exprs_cor = exprs.M, sample_cor=brs.M)
 saveRDS(cors, here("processed-data", "cindy", "NMF", model_type,
                     sprintf("%s-nmf-correlations-k%s.RDS", model_type, k)))
 
