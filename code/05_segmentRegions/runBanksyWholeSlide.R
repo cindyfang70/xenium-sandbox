@@ -21,9 +21,9 @@ suppressPackageStartupMessages({
 # tutorial: https://github.com/prabhakarlab/Banksy/tree/bioc
 #------------------------------------------------------------#
 args <- commandArgs(trailingOnly = TRUE)
-
-args <- c("processed-data/cindy/slide-5434/slide5434-filt_clustSFE.RDS", 
-          "0.9", "50", "0.45")
+# 
+# args <- c("processed-data/cindy/slide-5434/slide5434-filt_clustSFE.RDS", 
+#           "0.9", "50", "0.45")
 sfe <- readRDS(args[[1]])
 lambda <- as.numeric(args[[2]])
 k <- args[[3]]
@@ -33,6 +33,8 @@ harmony_lam <- as.numeric(args[[5]])
 slide <- unlist(strsplit(sfe$region_id[[1]], split="_"))[[3]]
 
 colData(sfe) <- colData(sfe)[,!grepl("clust", colnames(colData(sfe)))]
+
+sfe <- sfe[,!grepl("Sample", sfe$region_id)]
 
 sfe <- computeLibraryFactors(sfe)
 aname <- "normcounts"
@@ -56,16 +58,25 @@ print("PCA done")
 # Run Harmony batch effect correction on the Banksy matrix
 set.seed(1106)
 reducedDimName <- sprintf("PCA_M1_lam%s", lambda)
+
+
+umapName <- sprintf("UMAP_M1_lam%s", lambda)
+pdf(here("plots", "cindy", "05_segmentRegions", "banksy", 
+     sprintf("slide%s-wholeSlide-Harmony-corrected-lambda%s-harmony-lam%s.pdf", 
+             slide, lambda, harmony_lam)),
+    height=20, width=40)
+
+# Harmony convergence plot
 harmony_embedding <- RunHarmony(
-    data_mat = reducedDim(sfe, reducedDimName),
+    reducedDim(sfe, reducedDimName),
     meta_data = colData(sfe),
     vars_use = c("region_id"),
-    do_pca = FALSE,
     verbose = TRUE,
     lambda=harmony_lam,
     max_iter=100,
-    kmeans_init_nstart=20, 
-    kmeans_init_iter_max=5000
+    kmeans_init_nstart=100, 
+    kmeans_init_iter_max=5000, 
+    plot_convergence=TRUE
 )
 
 reducedDim(sfe, "Harmony_BANKSY") <- harmony_embedding
@@ -73,11 +84,7 @@ reducedDim(sfe, "Harmony_BANKSY") <- harmony_embedding
 # run UMAP on both the raw Banksy matrix and the Harmony corrected one
 sfe <- Banksy::runBanksyUMAP(sfe, use_agf = TRUE, lambda = lambda) # raw
 sfe <- runBanksyUMAP(sfe, dimred = "Harmony_BANKSY") # Harmony corrected
-
 # Visualize the UMAPs annotated by subject ID:
-umapName <- sprintf("UMAP_M1_lam%s", lambda)
-pdf(here("plots", "cindy", "05_segmentRegions", "banksy", 
-     sprintf("slide%s-wholeSlide-Harmony-corrected-lambda%s-harmony-lam%s.pdf", slide, lambda, harmony_lam)))
 cowplot::plot_grid(
     scater::plotReducedDim(sfe, umapName, 
                    point_size = 0.1,
@@ -94,6 +101,8 @@ cowplot::plot_grid(
     rel_widths = c(1, 1.2)
 )
 dev.off()
+
+
 
 # for leiden, higher resolution = more clusters, 
 # lower resolution = fewer clusters
@@ -121,6 +130,22 @@ for (i in 1:length(unique(sfe$region_id))){
             add_fill(var=clustName)+
             scale_fill_manual(values=getPalette(colourCount))
     plist[[i]] <- p
+    
+    # cowplot::plot_grid(
+    #     scater::plotReducedDim(sfe, umapName, 
+    #                            point_size = 0.1,
+    #                            point_alpha = 0.5,
+    #                            color_by = clustName) +
+    #         theme(legend.position = "none"),
+    #     scater::plotReducedDim(sfe, "UMAP_Harmony_BANKSY", 
+    #                            point_size = 0.1,
+    #                            point_alpha = 0.5,
+    #                            color_by = clustName) +
+    #         theme(legend.title = element_blank()) +
+    #         guides(colour = guide_legend(override.aes = list(size = 5, alpha = 1))),
+    #     nrow = 1,
+    #     rel_widths = c(1, 1.2)
+    # )
 }
 
 pdfname <- paste0(sprintf("banksy-wholeslide-harmony-%s-res%s-harmony-lambda%s",
