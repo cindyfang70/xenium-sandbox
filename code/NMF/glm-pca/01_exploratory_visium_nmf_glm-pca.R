@@ -41,24 +41,25 @@ if(model_type == "manual_annot"){ # use manual annotations
 k <- as.numeric(args[[2]])
 
 # trying out GLM-PCA as input to NMF
-sfe <- scry::nullResiduals(vis_anno, assay="counts", fam="poisson", type="pearson")
-sfe <- scater::runPCA(vis_anno, ncomponents=50, 
+vis_anno <- scry::nullResiduals(vis_anno, assay="counts", fam="poisson", type="pearson")
+vis_anno <- scater::runPCA(vis_anno, ncomponents=50, 
                       ntop = 1000,
                       exprs_values = "poisson_pearson_residuals",
                       scale = TRUE, name = "GLM-PCA",
                       BSPARAM = BiocSingular::RandomParam())
 
-A <- reducedDim(sfe, "GLM-PCA")
+A <- reducedDim(vis_anno, "GLM-PCA")
 
-model <- RcppML::nmf(A, k = k, seed=1237)
-# model <- readRDS(here("processed-data", "cindy", "NMF", model_type,
-#                       sprintf("%s-nmf-model-k%s-counts-based.RDS", model_type, k)))
+model <- RcppML::nmf(A, k = k, seed=1237, maxit=500)
 
 patterns <- t(model$h) # these are the factors
 
+print(dim(model$w))
+print(length(rowData(vis_anno)$gene_name))
+
 rownames(model$w) <- rowData(vis_anno)$gene_name
 
-saveRDS(model, here("processed-data", "cindy", "NMF", model_type,
+saveRDS(model, here("processed-data", "cindy", "NMF", "glm-pca", model_type,
                     sprintf("%s-nmf-model-k%s-glm-pca.RDS", model_type, k)))
 
 colnames(patterns) <- paste0("NMF", 1:k)
@@ -116,7 +117,7 @@ print(any(is.na(M)))
 
 col <- circlize::colorRamp2(seq(-1, 1, length = 3), c("blue", "#EEEEEE", "red"))
 fname <- sprintf("%s_NMF_layer_corr_plot_k%s-glm-pca.pdf", model_type, k)
-pdf(here("plots", "cindy", "NMF", model_type, fname), height=30, width=60)
+pdf(here("plots", "cindy", "NMF", "glm-pca", model_type, fname), height=30, width=60)
 ComplexHeatmap::Heatmap(t(as.matrix(M)), col=col,
                         row_names_gp = grid::gpar(fontsize = 30),
                         column_names_gp = grid::gpar(fontsize = 25),
@@ -130,6 +131,6 @@ ComplexHeatmap::Heatmap(t(as.matrix(brs.M)), col=col,
 dev.off()
 
 cors <- list(layer_cor=M, sample_cor=brs.M)
-saveRDS(cors, here("processed-data", "cindy", "NMF", model_type,
+saveRDS(cors, here("processed-data", "cindy", "NMF", "glm-pca", model_type,
                    sprintf("%s-nmf-correlations-k%s-glm-pca.RDS", model_type, k)))
 
