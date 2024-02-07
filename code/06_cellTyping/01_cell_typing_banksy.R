@@ -14,27 +14,56 @@ suppressPackageStartupMessages({
     library(scuttle)
     library(escheR)
     library(RColorBrewer)
-    library(harmony)
+    library(data.table)
+    library(pals)
 })
-#------------------------------------------------------------------------------#
-# Run banksy on one whole slide at a time for cell typing rather than domain
-# detection
+#------------------------------------------------------------#
+# Run banksy on all 6 tissue regions at the ame time
 # tutorial: https://github.com/prabhakarlab/Banksy/tree/bioc
-#------------------------------------------------------------------------------#
+#------------------------------------------------------------#
 args <- commandArgs(trailingOnly = TRUE)
-# 
+source(here("code", "01_createSCE", "xenium_helpers.R"))
+
 args <- c("processed-data/cindy/slide-5434/slide5434-filt_clustSFE.RDS",
-          "0.1", "50", "0.45")
-sfe <- readRDS(args[[1]])
-lambda <- as.numeric(args[[2]])
-k <- args[[3]]
-res <- as.numeric(args[[4]])
+          "processed-data/cindy/slide-5548/slide5548-filt_clustSFE.RDS",
+          0.1, 50, 0.65)
+sfe1 <- readRDS(args[[1]])
+sfe2 <- readRDS(args[[2]])
+lambda <- as.numeric(args[[3]])
+k <- args[[4]]
+res <- as.numeric(args[[5]])
 
-slide <- unlist(strsplit(sfe$region_id[[1]], split="_"))[[3]]
 
-colData(sfe) <- colData(sfe)[,!grepl("clust", colnames(colData(sfe)))]
+print(lambda)
+print(res)
 
-sfe <- sfe[,!grepl("Sample", sfe$region_id)]
+spe1 <- SFEtoSPE(sfe1)
+spe2 <- SFEtoSPE(sfe2)
+
+colData(spe1) <- colData(spe1)[,!grepl("clust", colnames(colData(spe1)))]
+spe1 <- spe1[,!grepl("Sample", spe1$region_id)]
+
+colData(spe2) <- colData(spe2)[,!grepl("clust", colnames(colData(spe2)))]
+spe2 <- spe2[,!grepl("Sample", spe2$region_id)]
+
+spe <- cbind(spe1, spe2)
+
+locs <- spatialCoords(spe)
+locs <- cbind(locs, sample_id = factor(spe$sample_id))
+locs_dt <- data.table(locs)
+
+colnames(locs_dt) <- c("sdimx", "sdimy", "group")
+locs_dt[, sdimx := sdimx - min(sdimx), by = group]
+
+global_max <- max(locs_dt$sdimx) * 1.5
+locs_dt[, sdimx := sdimx + group * global_max]
+
+locs <- as.matrix(locs_dt[, 1:2])
+rownames(locs) <- colnames(spe)
+
+spatialCoords(spe) <- locs
+
+sfe <- spe
 
 sfe <- computeLibraryFactors(sfe)
 aname <- "normcounts"
@@ -47,59 +76,14 @@ k_geom <- c(15, 30)
 sfe <- Banksy::computeBanksy(sfe, assay_name = aname, compute_agf = TRUE,
                              k_geom = k_geom)
 
-# run PCA
+# run PCA and UMAP, then Leiden clustering to find spatial domains
 # lambda is in [0,1], higher values of lambda puts more weight on spatial
 # information
 set.seed(1000)
 sfe <- Banksy::runBanksyPCA(sfe, use_agf = TRUE, lambda = lambda)
 print("PCA done")
-
-set.seed(1106)
-reducedDimName <- sprintf("PCA_M1_lam%s", lambda)
-
-
-# umapName <- sprintf("UMAP_M1_lam%s", lambda)
-# pdf(here("plots", "cindy", "05_segmentRegions", "banksy", 
-#          sprintf("slide%s-wholeSlide-Harmony-corrected-lambda%s-harmony-lam%s.pdf", 
-#                  slide, lambda, harmony_lam)),
-#     height=20, width=40)
-# 
-# # Run Harmony 
-# harmony_embedding <- RunHarmony(
-#     reducedDim(sfe, reducedDimName),
-#     meta_data = colData(sfe),
-#     vars_use = c("region_id"),
-#     verbose = TRUE,
-#     lambda=harmony_lam,
-#     max_iter=100,
-#     kmeans_init_nstart=100, 
-#     kmeans_init_iter_max=5000, 
-#     plot_convergence=TRUE # Harmony convergence plot
-# )
-# 
-# reducedDim(sfe, "Harmony_BANKSY") <- harmony_embedding
-
 sfe <- Banksy::runBanksyUMAP(sfe, use_agf = TRUE, lambda = lambda)
-
-
-# # Visualize the UMAPs annotated by subject ID:
-# cowplot::plot_grid(
-#     scater::plotReducedDim(sfe, umapName, 
-#                            point_size = 0.1,
-#                            point_alpha = 0.5,
-#                            color_by = "region_id") +
-#         theme(legend.position = "none"),
-#     scater::plotReducedDim(sfe, "UMAP_Harmony_BANKSY", 
-#                            point_size = 0.1,
-#                            point_alpha = 0.5,
-#                            color_by = "region_id") +
-#         theme(legend.title = element_blank()) +
-#         guides(colour = guide_legend(override.aes = list(size = 5, alpha = 1))),
-#     nrow = 1,
-#     rel_widths = c(1, 1.2)
-# )
-# dev.off()
-
+print("UMAP done")
 
 # for leiden, higher resolution = more clusters, 
 # lower resolution = fewer clusters
@@ -111,12 +95,21 @@ print("clustering done")
 #saveRDS(sfe, args[[1]])
 
 # default for the leiden algorithm in clusterBanksy is k_neighbours=50
-clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda,  50, res)
+clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
 
 
 # plot using escheR 
 colourCount = nlevels(colData(sfe)[[clustName]])
 getPalette = colorRampPalette(brewer.pal(colourCount, "Set3"))
+
+myPal <- brewer.pal(12, "Set3")
+
+myPal <- c(myPal, "#83b9c9","#71ab91", "#71ab51","#43b9c9", "#cf6390","#abb37b","#def485",
+           "#583d3f", "#89a61e","#0ff23d", "#9a3ef6", "#1284d8")
+names(myPal) <- levels(colData(sfe)[[clustName]])
+
+# myPalette <- pals::polychrome(colourCount)
+# names(myPalette) <- levels(colData(sfe)[[clustName]])
 
 plist <- list()
 for (i in 1:length(unique(sfe$region_id))){
@@ -125,14 +118,15 @@ for (i in 1:length(unique(sfe$region_id))){
     
     p <- make_escheR(sub.sfe, y_reverse=FALSE) %>%
         add_fill(var=clustName)+
-        scale_fill_manual(values=getPalette(colourCount))
+        #scale_fill_manual(values=getPalette(colourCount))
+        scale_fill_manual(values=myPal)
     plist[[i]] <- p
 }
 
-pdfname <- paste0(sprintf("cell-types-banksy-wholeslide%s-res%s-lambda%s",
-                          slide, res, lambda), ".pdf")
+pdfname <- paste0(sprintf("celltype-banksy-bothslides-res%s-lambda%s", res, lambda), ".pdf")
 
 pdf(here("plots", "cindy", "06_cellTyping", "banksy", pdfname), height=15, width=20)
+do.call(gridExtra::grid.arrange, c(plist, ncol=3))
 for (i in 1:length(plist)){
     print(plist[[i]])
 }
