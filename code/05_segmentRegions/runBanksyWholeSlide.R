@@ -66,7 +66,7 @@ pdf(here("plots", "cindy", "05_segmentRegions", "banksy",
              slide, lambda, harmony_lam)),
     height=20, width=40)
 
-# Harmony convergence plot
+# Run Harmony 
 harmony_embedding <- RunHarmony(
     reducedDim(sfe, reducedDimName),
     meta_data = colData(sfe),
@@ -76,7 +76,7 @@ harmony_embedding <- RunHarmony(
     max_iter=100,
     kmeans_init_nstart=100, 
     kmeans_init_iter_max=5000, 
-    plot_convergence=TRUE
+    plot_convergence=TRUE # Harmony convergence plot
 )
 
 reducedDim(sfe, "Harmony_BANKSY") <- harmony_embedding
@@ -84,6 +84,7 @@ reducedDim(sfe, "Harmony_BANKSY") <- harmony_embedding
 # run UMAP on both the raw Banksy matrix and the Harmony corrected one
 sfe <- Banksy::runBanksyUMAP(sfe, use_agf = TRUE, lambda = lambda) # raw
 sfe <- runBanksyUMAP(sfe, dimred = "Harmony_BANKSY") # Harmony corrected
+
 # Visualize the UMAPs annotated by subject ID:
 cowplot::plot_grid(
     scater::plotReducedDim(sfe, umapName, 
@@ -101,7 +102,6 @@ cowplot::plot_grid(
     rel_widths = c(1, 1.2)
 )
 dev.off()
-
 
 
 # for leiden, higher resolution = more clusters, 
@@ -130,22 +130,6 @@ for (i in 1:length(unique(sfe$region_id))){
             add_fill(var=clustName)+
             scale_fill_manual(values=getPalette(colourCount))
     plist[[i]] <- p
-    
-    # cowplot::plot_grid(
-    #     scater::plotReducedDim(sfe, umapName, 
-    #                            point_size = 0.1,
-    #                            point_alpha = 0.5,
-    #                            color_by = clustName) +
-    #         theme(legend.position = "none"),
-    #     scater::plotReducedDim(sfe, "UMAP_Harmony_BANKSY", 
-    #                            point_size = 0.1,
-    #                            point_alpha = 0.5,
-    #                            color_by = clustName) +
-    #         theme(legend.title = element_blank()) +
-    #         guides(colour = guide_legend(override.aes = list(size = 5, alpha = 1))),
-    #     nrow = 1,
-    #     rel_widths = c(1, 1.2)
-    # )
 }
 
 pdfname <- paste0(sprintf("banksy-wholeslide-harmony-%s-res%s-harmony-lambda%s",

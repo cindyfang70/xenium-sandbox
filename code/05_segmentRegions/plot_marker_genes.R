@@ -24,26 +24,46 @@ int <- gene_df[which(gene_df$gene %in% panel$Gene),] %>%
                              test == "Sp09D08" ~ "L4",
                              test == "Sp09D04" ~ "L5",
                              test == "Sp09D07" ~ "L6",
-                             test == "Sp09D06" | test == "Sp09D09" ~ "WM"))
+                             test == "Sp09D06" | test == "Sp09D09" ~ "WM")) 
+
+int <- int %>%
+    filter(gene %in% c("MOBP", "AQP4", "CUX2", "RORB", "NTNG1", "HS3ST4", "PVALB"))
+slide_number <- "5548"
 
 
+# read in the sfe to plot the marker genes onto
+sfes <- readRDS(here("processed-data", "cindy", sprintf("slide-%s", slide_number), 
+                    sprintf("slide%s-all-samples-spe-with-banksy.RDS", slide_number)))
+sfe_list <- lapply(unique(sfes$region_id), function(x) 
+    sfes[, sfes$region_id == x])
 
-sfe <- readRDS("processed-data/cindy/slide-5434/Br6471_Post_SFE_filt.RDS")
+pdf(here('plots', "cindy", "marker_genes", 
+        sprintf("slide%s_bayesspace_marker_genes_plots.pdf", slide_number)),
+        height=40, width=50)
 
-pdf(here('plots', "marker_genes", "bayesspace_marker_genes_plots.pdf"),
-    height=40, width=50)
-for (i in 1:length(unique(int$layer))){
-    pls <- list()
-    layer <- unique(int$layer)[[i]]
-    domain_genes <- int[which(int$layer==layer),]
-    for (i in 1:nrow(domain_genes)){
-        gene <- domain_genes$gene[[i]]
-        sfe$marker_counts <- counts(sfe)[which(rownames(sfe)==gene),]
-        p <- make_escheR(sfe, y_reverse=FALSE)%>%
-            add_fill("marker_counts")+
-            ggtitle(paste(gene, layer, sep="_"))
-        pls <- rlist::list.append(pls, p)
+for (j in 1:length(sfe_list)){
+    sfe <- sfe_list[[j]]
+    sfe <- scuttle::logNormCounts(sfe)
+    for (i in 1:length(unique(int$layer))){
+        pls <- list()
+        layer <- unique(int$layer)[[i]]
+        domain_genes <- unique(int[which(int$layer==layer),]$gene)
+        for (k in 1:length(domain_genes)){
+            gene <- domain_genes[[k]]
+            sfe$marker_logcounts <- logcounts(sfe)[which(rownames(sfe)==gene),]
+            p <- make_escheR(sfe, y_reverse=FALSE)%>%
+                add_fill("marker_logcounts")+
+                ggtitle(paste(gene, layer, sep="_"))+
+                theme(plot.title = element_text(size=40), legend.title=element_text(size=30),
+                      legend.text = element_text(size=30),
+                      legend.key.size = grid::unit(3, "cm"))+
+                scale_fill_viridis_c(limits = range(0, 10))+
+                guides(guide_legend(size=20))
+            pls <- rlist::list.append(pls, p)
+        }
+        do.call(gridExtra::grid.arrange, c(pls, ncol=3))
     }
-    do.call(gridExtra::grid.arrange, c(pls, ncol=3))
 }
+
 dev.off()
+

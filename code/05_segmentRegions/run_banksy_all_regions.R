@@ -15,6 +15,7 @@ suppressPackageStartupMessages({
     library(escheR)
     library(RColorBrewer)
     library(data.table)
+    library(pals)
 })
 #------------------------------------------------------------#
 # Run banksy on one whole slide at a time
@@ -91,7 +92,7 @@ sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda,
 print("clustering done")
 
 # save the Banksy results
-saveRDS(sfe, args[[1]])
+#saveRDS(sfe, args[[1]])
 
 # default for the leiden algorithm in clusterBanksy is k_neighbours=50
 clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
@@ -99,7 +100,15 @@ clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
 
 # plot using escheR 
 colourCount = nlevels(colData(sfe)[[clustName]])
-getPalette = colorRampPalette(brewer.pal(12, "Set3"))
+getPalette = colorRampPalette(brewer.pal(colourCount, "Set3"))
+
+myPal <- brewer.pal(12, "Set3")
+
+myPal <- c(myPal, "#83b9c9","#71ab91")
+names(myPal) <- levels(colData(sfe)[[clustName]])
+
+# myPalette <- pals::polychrome(colourCount)
+# names(myPalette) <- levels(colData(sfe)[[clustName]])
 
 plist <- list()
 for (i in 1:length(unique(sfe$region_id))){
@@ -108,11 +117,12 @@ for (i in 1:length(unique(sfe$region_id))){
     
     p <- make_escheR(sub.sfe, y_reverse=FALSE) %>%
         add_fill(var=clustName)+
-        scale_fill_manual(values=getPalette(colourCount))
+        #scale_fill_manual(values=getPalette(colourCount))
+        scale_fill_manual(values=myPal)
     plist[[i]] <- p
 }
-slide <- unlist(strsplit(sfe$region_id[[1]], split="_"))[[3]]
-pdfname <- paste0(sprintf("banksy-wholeslide-%s", slide), ".pdf")
+
+pdfname <- paste0(sprintf("banksy-bothslides-res%s", res), ".pdf")
 
 pdf(here("plots", "cindy", "05_segmentRegions", "banksy", pdfname), height=15, width=20)
 do.call(gridExtra::grid.arrange, c(plist, ncol=3))
