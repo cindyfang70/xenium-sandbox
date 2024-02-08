@@ -40,5 +40,13 @@ for (i in 1:length(unique(sub.spe$preds_from_bayesspace_NMF_k200))){
     alpha.shape <- ashape(x=spatialCoords(sub.spe.layer)[,1], y=spatialCoords(sub.spe.layer)[,2], alpha=100)
     print(alpha.shape)
     
+    seg.df <- as.data.frame(alpha.shape$edges)[,3:6]
+    colnames(seg.df) <- c("from.x", "from.y", "to.x", "to.y")
+    
+    p <- make_escheR(sub.spe, y_reverse=FALSE) %>%
+        add_fill("preds_from_bayesspace_NMF_k200")+
+        scale_fill_discrete()+
+        geom_segment(data=seg.df, aes(x=from.x,xend = to.x, y=from.y,yend = to.y))
+    
     
 }
