@@ -24,9 +24,9 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly = TRUE)
 source(here("code", "01_createSCE", "xenium_helpers.R"))
 
-args <- c("processed-data/cindy/slide-5434/slide5434-filt_clustSFE.RDS",
-          "processed-data/cindy/slide-5548/slide5548-filt_clustSFE.RDS",
-          0.1, 50, 0.65)
+args <- c("processed-data/cindy/slide-5434/slide-5434-spe-with-nmf-k200-bayesspace.RDS",
+          "processed-data/cindy/slide-5548/slide-5548-spe-with-nmf-k200-bayesspace.RDS",
+          0, 50, 1.0)
 sfe1 <- readRDS(args[[1]])
 sfe2 <- readRDS(args[[2]])
 lambda <- as.numeric(args[[3]])
@@ -92,7 +92,8 @@ sfe <- Banksy::clusterBanksy(sfe, use_agf = TRUE, lambda = lambda,
 print("clustering done")
 
 # save the Banksy results
-#saveRDS(sfe, args[[1]])
+sfename <- here("processed-data", "cindy", "all-tissues-spe-with-banksy-cell-types.RDS")
+saveRDS(sfe, sfename)
 
 # default for the leiden algorithm in clusterBanksy is k_neighbours=50
 clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
@@ -105,7 +106,7 @@ getPalette = colorRampPalette(brewer.pal(colourCount, "Set3"))
 myPal <- brewer.pal(12, "Set3")
 
 myPal <- c(myPal, "#83b9c9","#71ab91", "#71ab51","#43b9c9", "#cf6390","#abb37b","#def485",
-           "#583d3f", "#89a61e","#0ff23d", "#9a3ef6", "#1284d8")
+           "#583d3f", "#89a61e","#0ff23d", "#9a3ef6", "#1284d8","#8984d8", "#7d056a", "#5f0cab", "#935821" )
 names(myPal) <- levels(colData(sfe)[[clustName]])
 
 # myPalette <- pals::polychrome(colourCount)
@@ -131,3 +132,4 @@ for (i in 1:length(plist)){
     print(plist[[i]])
 }
 dev.off()
+
