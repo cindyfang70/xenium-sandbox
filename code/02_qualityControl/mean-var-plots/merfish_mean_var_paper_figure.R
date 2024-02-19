@@ -3,12 +3,12 @@ library(ExperimentHub)
 library(ggpubr)
 
 eh <- ExperimentHub()
-query(eh, c("MerfishData", "hypothalamus"))
+#query(eh, c("MerfishData", "hypothalamus"))
 
-spe <- MouseHypothalamusMoffitt2018()
+spe.baysor <- MouseIleumPetukhov2021(segmentation = "baysor")
 
-mean_emp <- rowMeans(assay(spe))
-var_emp <- rowVars(assay(spe))
+mean_emp <- rowMeans(counts(spe.baysor))
+var_emp <- rowVars(counts(spe.baysor))
 
 model = lm(var_emp ~ 1*mean_emp + I(mean_emp^2) + 0, tibble(mean_emp, var_emp))
 phi = 1/coef(model)["I(mean_emp^2)"]
@@ -36,7 +36,7 @@ p <-ggplot(mean_var_tb %>% filter(Distribution %in% c("var_emp")),
     scale_x_log10() + scale_y_log10() +
     labs(x = "Log of mean expression",
          y = "Log of variance") +
-    ggtitle("MERFISH Mouse Hypothalumus")+
+    ggtitle("MERFISH Mouse Ileum")+
     theme_bw()+
     theme(strip.background = element_blank(),
           legend.position="bottom",
@@ -47,6 +47,8 @@ p <-ggplot(mean_var_tb %>% filter(Distribution %in% c("var_emp")),
           legend.key.size = unit(1, "cm"))#+
 #guides(colour = guide_legend(override.aes = list(size=5)))
 
-pdf(here("plots", "cindy", "mean_var_plots", "merfish_mean_var_plot.pdf"))
-print(p)
-dev.off()
+ggsave(here("plots", "cindy", "mean_var_plots", "merfish_mean_var_plot.pdf"), 
+       plot=p,
+       height=7.5, width=9)
+# print(p)
+# dev.off()
