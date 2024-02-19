@@ -1,3 +1,4 @@
+if (!require("fasthplus")) devtools::install_github(repo="ntdyjack/fasthplus", ref = "main")
 suppressPackageStartupMessages({
     library(Voyager)
     library(SpatialFeatureExperiment)
@@ -14,7 +15,6 @@ suppressPackageStartupMessages({
     library(escheR)
     library(RColorBrewer)
     library(data.table)
-    library(pals)
     library(fasthplus)
 })
 #-------------------------------------------------------------------------------#
@@ -23,6 +23,7 @@ suppressPackageStartupMessages({
 # reference: https://github.com/LieberInstitute/spatialDLPFC/blob/main/code/analysis/06_fasthplus/01_fasthplus.R
 #-------------------------------------------------------------------------------#
 # read in the SPE object
+source(here("code", "cindy", "01_createSCE", "xenium_helpers.R"))
 banksy_sfe <- readRDS(here('processed-data', "cindy", "all-tissues-sfe-with-Banksy-spatial-domains.RDS"))
 
 sfe_5434_nmf <- readRDS(here("processed-data", "cindy", "slide-5434","slide-5434-spe-with-nmf-k200-bayesspace.RDS"))
@@ -42,7 +43,9 @@ banksy_sfe$cell_sample_id <- paste(banksy_sfe$cell_id, banksy_sfe$region_id, sep
 
 # make the ordering of cells match in the two separate spe objects
 spe <- nmf_sfe[,match(banksy_sfe$cell_sample_id, nmf_sfe$cell_sample_id)]
-sum(spe$cell_sample_id == banksy_sfe$cell_sample_id) # sanity check
+sum(spe$cell_sample_id == banksy_sfe$cell_sample_id) == ncol(spe) # sanity check
+
+reducedDim(spe, "UMAP") <- reducedDim(banksy_sfe, "UMAP_M1_lam0.9")
 
 spe$banksy_domains <- banksy_sfe$clust_M1_lam0.9_k50_res0.45
 
@@ -56,7 +59,7 @@ lambda <- 0.9
 res <- 0.45
 
 
-clustName <- sprintf("clust_M1_lam%s_k%s_res%s", lambda, 50, res)
+clustName <- "banksy_domains"
 k <- length(unique(colData(spe)[[clustName]]))
 
 # hpb estimate. t = pre-bootstrap sample size, D = reduced dimensions matrix, L = cluster labels, r = number of bootstrap iterations
@@ -71,7 +74,7 @@ find_t <- function(L, proportion = 0.05) {
 initial_t <- find_t(L = colData(spe)[[clustName]], proportion = 0.01)
 
 cluster_prop <- table(colData(spe)[[clustName]]) / ncol(spe)
-bad_clusters <- which(cluster_prop < 0.01 / 28)
+bad_clusters <- which(cluster_prop < 0.01 / k)
 if (length(bad_clusters) > 0) {
     message("For k: ", k, " we are dropping small clusters: ", paste(names(bad_clusters), collapse = ", "))
     spe <- spe[, !colData(spe)[[clustName]] %in% as.integer(names(bad_clusters))]
@@ -83,6 +86,7 @@ if (length(bad_clusters) > 0) {
 
 
 set.seed(1211)
-fasthplus <- hpb(D = reducedDims(spe)$"UMAP_M1_lam0.1", L = colData(spe)[[clustName]], t = updated_t, r = 30)
+fasthplus <- hpb(D = reducedDims(spe)$"UMAP", L = colData(spe)[[clustName]], t = updated_t, r = 30)
 results <- data.frame(k = k, fasthplus = fasthplus)
-write.table(results, file = here::here("processed-data", "rdata", "spe", "06_fasthplus", "fasthplus_results_no_WM.csv"), append = TRUE)
+print(results)
+write.table(results, file = here::here("processed-data", "cindy", "NMF", "fasthplus_results_banksy_domains.csv"), append = TRUE)
