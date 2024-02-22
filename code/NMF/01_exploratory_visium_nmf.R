@@ -47,12 +47,20 @@ if(model_type == "manual_annot"){ # use manual annotations
     
 }
 
+
 # NMF on the annotated visium data
 k <- as.numeric(args[[2]])
 A <- logcounts(vis_anno) # using logcounts because there are multiple datasets
 
 # trying out a counts-based approach instead:
 #A <- scuttle::normalizeCounts(vis_anno, transform="none")
+
+# cross-validation of NMF # of factors:
+cv <- crossValidate(A, k = 20:100, method = "predict", reps = 3, seed = 123)
+
+pdf(here("plots", "cindy", "NMF", model_type, sprintf("%s-NMF-CV.pdf", model_type)))
+plot(cv) + ggtitle("NMF CV")
+dev.off()
 
 model <- RcppML::nmf(A, k = k, seed=1237)
 # model <- readRDS(here("processed-data", "cindy", "NMF", model_type,
