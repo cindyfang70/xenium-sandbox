@@ -1,3 +1,4 @@
+if(!require(singlet)){devtools::install_github("zdebruine/singlet")}
 library(RcppML)
 library(Matrix)
 library(Voyager)
@@ -8,6 +9,7 @@ library(escheR)
 library(here)
 library(tidyverse)
 library(ggforce)
+library(irlba)
 ################################################################################
 # Use RcppML::nmf to perform non-negative matrix factorization on the manually
 # annotated Visium dataset to get a loadings matrix and a factors matrix with 
@@ -56,7 +58,10 @@ A <- logcounts(vis_anno) # using logcounts because there are multiple datasets
 #A <- scuttle::normalizeCounts(vis_anno, transform="none")
 
 # cross-validation of NMF # of factors:
-cv <- crossValidate(A, k = 20:100, method = "predict", reps = 3, seed = 123)
+cv <- singlet::cross_validate_nmf(A, ranks = c(5,20,50,100,150,200),  
+                                  n_replicates = 3, 
+                                  seed = 123,
+                                  verbose=3)
 
 pdf(here("plots", "cindy", "NMF", model_type, sprintf("%s-NMF-CV.pdf", model_type)))
 plot(cv) + ggtitle("NMF CV")
